@@ -9,6 +9,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # support sourcetrail
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+add_compile_options(
+    "-Wno-exceptions"  # there's just too many warnings if this is enabled
+    # "-ftrapv"
+    # "-pedantic"
+    # "-Wall"
+    # "-Wextra"
+    # "-Wconversion"
+    # "$<$<CONFIG:DEBUG>:-fsanitize=undefined>"
+    # "$<$<CONFIG:DEBUG>:-fsanitize=integer>"
+    # "$<$<CONFIG:DEBUG>:-fsanitize=address>"
+    # "$<$<CONFIG:DEBUG>:-O0>"
+    # "$<$<CONFIG:RELEASE>:-O3>"
+)
 
 # add directoy, where we store all custom files for finding libraries which are not build using cmake (i.e. currently z3 only), to the search path of cmake
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
