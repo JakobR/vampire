@@ -33,5 +33,6 @@ valgrind.supp
 *.p
 *.tptp
 *.txt
+!CMakeLists.txt
 *.smt2
 *.cnf
