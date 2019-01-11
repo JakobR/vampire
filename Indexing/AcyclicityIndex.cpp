@@ -208,7 +208,7 @@ namespace Indexing
                         AcyclicityIndex& aindex)
       :
       _queryLit(queryLit),
-      _queryClause(queryClause),
+//      _queryClause(queryClause),
       _nextResult(nullptr),
       _stack(0),
       _subst(new RobSubstitution()),
@@ -397,7 +397,7 @@ namespace Indexing
     }
   private:
     Literal *_queryLit;
-    Clause *_queryClause;
+//    Clause *_queryClause;
     SIndex *_index;
     TermIndexingStructure *_tis;    
     CycleQueryResult *_nextResult;
