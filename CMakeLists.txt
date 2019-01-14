@@ -726,7 +726,7 @@ set(VAMPIRE_SOURCES
     # Test/CheckedSatSolver.hpp
     global.cpp
     vampire.cpp
-    version.cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
     )
 
 # TODO: we want at least vampire_dbg, vampire_rel, vampire_z3_dbg, vampire_z3_rel
@@ -753,7 +753,4 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 
-file(WRITE version.cpp
-    "//Automatically generated file, see CMakeLists.txt for details \n"
-    "const char* VERSION_STRING = \"Vampire ${VAMPIRE_VERSION_NUMBER} (commit ${GIT_COMMIT_DESCRIPTION})\"; \n"
-    )
+configure_file(version.cpp.in version.cpp)
