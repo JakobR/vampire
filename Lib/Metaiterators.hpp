@@ -640,18 +640,6 @@ MappingIterator<Inner,Functor,RETURN_TYPE(Functor)> getMappingIterator(Inner it,
 
 /**
  * Return iterator that returns elements of @b it transformed by
- * the lambda @b f
- *
- * @see MappingIterator
- */
-template<typename Inner, typename Functor,typename ResultType>
-MappingIterator<Inner,Functor,ResultType> getMappingIterator(Inner it, std::function<ResultType(Inner)> f)
-{
-  return MappingIterator<Inner,Functor,ResultType>(it, f);
-}
-
-/**
- * Return iterator that returns elements of @b it transformed by
  * the functor @b f
  *
  * @see MappingIterator
