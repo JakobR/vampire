@@ -415,6 +415,10 @@ set(VAMPIRE_INFERENCE_SOURCES
     Inferences/TautologyDeletionISE.hpp
     Inferences/TermAlgebraReasoning.hpp
     Inferences/URResolution.hpp
+    # Inferences/TheoryInstAndSimp.hpp
+    # Inferences/TheoryInstAndSimp.cpp  # ???
+    Inferences/TheoryRuleAttempt.hpp
+    Inferences/TheoryRuleAttempt.cpp
     )
 source_group(inference_source_files FILES ${VAMPIRE_INFERENCE_SOURCES})
 
