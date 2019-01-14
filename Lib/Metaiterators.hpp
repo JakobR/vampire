@@ -644,11 +644,12 @@ MappingIterator<Inner,Functor,RETURN_TYPE(Functor)> getMappingIterator(Inner it,
  *
  * @see MappingIterator
  */
-template<typename Inner, typename Functor,typename ResultType>
-MappingIterator<Inner,Functor,ResultType> getMappingIterator(Inner it, std::function<ResultType(Inner)> f)
-{
-  return MappingIterator<Inner,Functor,ResultType>(it, f);
-}
+// BROKEN???
+//template<typename Inner, typename Functor,typename ResultType>
+//MappingIterator<Inner,Functor,ResultType> getMappingIterator(Inner it, std::function<ResultType(Inner)> f)
+//{
+//  return MappingIterator<Inner,Functor,ResultType>(it, f);
+//}
 
 /**
  * Return iterator that returns elements of @b it transformed by
