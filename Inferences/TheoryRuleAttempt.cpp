@@ -59,15 +59,12 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // 2. Search active clause set for a clause of form "y < z".
     // 3. Return clause: "x < z".
 
-    // env.signature
     std::cerr << "\nTransitivityRuleExperiment::generateClauses:\n";
     std::cerr << "Given: " << premise->toString() << std::endl;
 
-    // unsigned less_pred = env.signature->addInterpretedPredicate(Theory::INT_LESS
     static unsigned const pred_int_less = env.signature->getInterpretingSymbol(Theory::INT_LESS);
 
     auto it1 = premise->getSelectedLiteralIterator();
-    // auto it2 = getMappingIterator(it1, DebugPrintFn());
     // auto it2 = getMappingIteratorKnownRes<Literal*>(it1, [](Literal* lit) {
     //         std::cerr << "Selected literal: " << lit->toString() << std::endl;
     //         return lit;
@@ -77,6 +74,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         std::cerr << "\tFunctor: " << lit->functor() << std::endl;
         std::cerr << "\tFunction name: " << lit->functionName() << std::endl;
         std::cerr << "\tPredicate name: " << lit->predicateName() << std::endl;
+        std::cerr << "\tsecond argument: " << lit->nthArgument(1)->toString() << std::endl;
     });
 
     // Filter iterator to positive literals of form "x < y"
@@ -86,6 +84,19 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     auto it3 = getFilteredIterator(it2, [](Literal* lit) -> bool {
         return lit->isPositive() && (lit->functor() == pred_int_less);
     });
+
+
+    using LiteralIterator = VirtualIterator<Literal*>;
+
+    auto it4 = getMappingIteratorKnownRes<std::pair<Literal*,LiteralIterator>>(it3, [](Literal* lit) {
+        // lit = $less(t1, t2).
+        // match against $less(t3, t4) such that there is a unification of t2 and t3.
+        TermList* t2 = lit->nthArgument(1);
+        // TODO: Unification
+        return std::make_pair(lit, LiteralIterator::getEmpty());
+    });
+
+    // pushPairIntoRightIterator
 
     auto printIt = it3;
     while (printIt.hasNext()) {
