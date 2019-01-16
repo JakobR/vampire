@@ -30,21 +30,9 @@ void TransitivityRuleExperiment::detach()
     GeneratingInferenceEngine::detach();
 }
 
-namespace {
-
-// // template <typename T>
-// struct DebugPrintFn
-// {
-//     DebugPrintFn() {}
-//     DECL_RETURN_TYPE(Clause*);
-//     OWN_RETURN_TYPE operator()(Clause* cl)
-//     {
-//         CALL("DebugPrintFn::operator()");
-//         std::cerr << cl->toString() << std::endl;
-//         return cl;
-//     }
-// };
-
+/** Returns an iterator that contains the same elements as the given iterator it,
+ * but calls the function f on each element before returning the element.
+ */
 template <typename Inner, typename ElementType=ELEMENT_TYPE(Inner), typename Function>
 MappingIterator<Inner,std::function<ElementType(ElementType)>,ElementType>
 getSideEffectIterator(Inner it, Function f) {
@@ -53,8 +41,6 @@ getSideEffectIterator(Inner it, Function f) {
         return el;
     });
     return getMappingIteratorKnownRes<ElementType>(it, fn);
-}
-
 }
 
 ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
@@ -102,17 +88,17 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         // Goal: match against $less(t3, t4) such that there is a unification of t2 and t3.
         TermList* t2 = lit->nthArgument(1);
 
-        std::cerr << "\tFinding unifications for: " << t2->toString() << std::endl;
-        auto unifs = _subtermIndex->getUnifications(*t2);
-        while (unifs.hasNext()) {
-            auto unif = unifs.next();
-            std::cerr << "\tUnification result:" << std::endl;
-            std::cerr << "\t\tClause: " << unif.clause->toString() << std::endl;
-            std::cerr << "\t\tLiteral: " << unif.literal->toString() << std::endl;
-            std::cerr << "\t\tTerm: " << unif.term.toString() << std::endl;
-            // std::cerr << "\t\tSubstitution: " << unif.substitution->toString() << std::endl;
-            // std::cerr << "\t\tConstraints: " << unif.constraints->toString() << std::endl;
-        }
+        // std::cerr << "\tFinding unifications for: " << t2->toString() << std::endl;
+        // auto unifs = _subtermIndex->getUnifications(*t2);
+        // while (unifs.hasNext()) {
+        //     auto unif = unifs.next();
+        //     std::cerr << "\tUnification result:" << std::endl;
+        //     std::cerr << "\t\tClause: " << unif.clause->toString() << std::endl;
+        //     std::cerr << "\t\tLiteral: " << unif.literal->toString() << std::endl;
+        //     std::cerr << "\t\tTerm: " << unif.term.toString() << std::endl;
+        //     // std::cerr << "\t\tSubstitution: " << unif.substitution->toString() << std::endl;
+        //     // std::cerr << "\t\tConstraints: " << unif.constraints->toString() << std::endl;
+        // }
 
         // TODO
         // This isn't quite right.
@@ -133,7 +119,11 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         // Annotate each result with the currently selected literal
         auto unifIt3 = pushPairIntoRightIterator(lit, unifIt2);
 
-        return pvi(unifIt3);
+        auto unifIt4 = getSideEffectIterator(unifIt3, [](ELEMENT_TYPE(decltype(unifIt3)) x) {
+            std::cerr << "\tMatched literals: " << x.first->toString() << " /// " << x.second.literal->toString() << std::endl;
+        });
+
+        return pvi(unifIt4);
     });
 
     auto it5 = getFlattenedIterator(it4);
@@ -153,10 +143,9 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         Unit::InputType inpType = (Unit::InputType)max(cl1->inputType(), cl2->inputType());  // ??? (copied from ForwardSubsumptionAndResolution::generateSubsumptionResolutionClause)
         Clause* res = new(nlen) Clause(nlen, inpType, inf);
 
-        // TODO: We have to apply the substitution to t1, t2!!
         auto s = arg.second.substitution;
-        TermList t1 = *lit1->nthArgument(0);
-        TermList t2 = *lit2->nthArgument(1);
+        TermList t1 = s->applyToQuery(*lit1->nthArgument(0));
+        TermList t2 = s->applyToResult(*lit2->nthArgument(1));
         Literal* lit = Literal::create2(pred_int_less, true, t1, t2);
 
         (*res)[0] = lit;
@@ -165,7 +154,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         for (int i = 0; i < len1; ++i) {
             Literal* curr = (*cl1)[i];
             if (curr != lit1) {
-                (*res)[next] = curr;
+                (*res)[next] = s->applyToQuery(curr);
                 next += 1;
             }
         }
@@ -174,7 +163,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         for (int i = 0; i < len2; ++i) {
             Literal* curr = (*cl2)[i];
             if (curr != lit2) {
-                (*res)[next] = curr;
+                (*res)[next] = s->applyToResult(curr);
                 next += 1;
             }
         }

@@ -15,12 +15,21 @@ using namespace Saturation;
  * As a first attempt, we chose to implement
  * the following rule for transitivity:
  *
- *     x < y   y < z
+ *     t < u   u < v
  *    ---------------
- *         x < z
+ *         t < v
  *
  * Should be a GeneratingInferenceEngine, since we cannot
  * discard the premises.
+ *
+ * To find out more about how to use the indexing and unification,
+ * I have now implemented the following extended version:
+ *
+ *     t < u \/ C     v < w \/ D     uθ = vθ
+ *    ---------------------------------------
+ *               tθ < wθ \/ Cθ \/ Dθ
+ *
+ * (when "t<u" is a selected literal in "t<u \/ C")
  */
 class TransitivityRuleExperiment
     : public GeneratingInferenceEngine
