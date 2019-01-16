@@ -314,7 +314,9 @@ public:
     /* Induction hypothesis*/
     INDUCTION,
     /* Inductive strengthening*/
-    INDUCTIVE_STRENGTH
+    INDUCTIVE_STRENGTH,
+    /* Theory inference rule */
+    THEORY_INFERENCE_RULE,              // TODO(JR): better name
   }; // class Inference::Rule
 
   explicit Inference(Rule r);

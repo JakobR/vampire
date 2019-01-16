@@ -1,5 +1,6 @@
 #include "TheoryRuleAttempt.hpp"
 
+#include "Kernel/Inference.hpp"
 #include "Kernel/Signature.hpp"
 #include "Lib/PairUtils.hpp"
 #include "Indexing/IndexManager.hpp"
@@ -137,19 +138,65 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
     auto it5 = getFlattenedIterator(it4);
 
+    auto it6 = getMappingIteratorKnownRes<Clause*>(it5, [premise](std::pair<Literal*,TermQueryResult> arg) {
+        Clause* cl1 = premise;
+        Literal* lit1 = arg.first;
 
-    auto finalIt = it5;
-    auto printIt = getSideEffectIterator(finalIt, [](ELEMENT_TYPE(decltype(finalIt)) x) -> void {
-        // std::cerr << "ITERATOR ELEMENT: " << x->toString() << std::endl;
-        std::cerr << "ITERATOR ELEMENT: " << x.first->toString() << " / " << x.second.literal->toString() << std::endl;
+        Clause* cl2 = arg.second.clause;
+        Literal* lit2 = arg.second.literal;
+
+        int len1 = cl1->length();
+        int len2 = cl2->length();
+        int nlen = len1 + len2 - 1;
+
+        Inference* inf = new Inference2(Inference::THEORY_INFERENCE_RULE, cl1, cl2);
+        Unit::InputType inpType = (Unit::InputType)max(cl1->inputType(), cl2->inputType());  // ??? (copied from ForwardSubsumptionAndResolution::generateSubsumptionResolutionClause)
+        Clause* res = new(nlen) Clause(nlen, inpType, inf);
+
+        // TODO: We have to apply the substitution to t1, t2!!
+        auto s = arg.second.substitution;
+        TermList t1 = *lit1->nthArgument(0);
+        TermList t2 = *lit2->nthArgument(1);
+        Literal* lit = Literal::create2(pred_int_less, true, t1, t2);
+
+        (*res)[0] = lit;
+
+        int next = 1;
+        for (int i = 0; i < len1; ++i) {
+            Literal* curr = (*cl1)[i];
+            if (curr != lit1) {
+                (*res)[next] = curr;
+                next += 1;
+            }
+        }
+        // we should have skipped exactly one literal (namely lit1)
+        ASS(next == 1 + (len1 - 1));
+        for (int i = 0; i < len2; ++i) {
+            Literal* curr = (*cl2)[i];
+            if (curr != lit2) {
+                (*res)[next] = curr;
+                next += 1;
+            }
+        }
+        ASS(next == 1 + (len1 - 1) + (len2 - 1));
+
+        res->setAge(std::max(cl1->age(), cl2->age()));  // TODO ???
+
+        return res;
     });
 
-    // Just for debugging
-    while (printIt.hasNext()) {
-        printIt.next();
-    }
-    std::cerr << std::endl;
+    auto finalIt = it6;
+    auto printIt = getSideEffectIterator(finalIt, [](ELEMENT_TYPE(decltype(finalIt)) x) -> void {
+        std::cerr << "ITERATOR ELEMENT: " << x->toString() << std::endl;
+        // std::cerr << "ITERATOR ELEMENT: " << x.first->toString() << " / " << x.second.literal->toString() << std::endl;
+    });
 
-    // return pvi(printIt);
-    return ClauseIterator::getEmpty();
+    // // Just for debugging
+    // while (printIt.hasNext()) {
+    //     printIt.next();
+    // }
+    // std::cerr << std::endl;
+
+    return pvi(printIt);
+    // return ClauseIterator::getEmpty();
 }
