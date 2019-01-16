@@ -1,6 +1,7 @@
 #include "TheoryRuleAttempt.hpp"
 
 #include "Kernel/Signature.hpp"
+#include "Lib/PairUtils.hpp"
 #include "Indexing/IndexManager.hpp"
 #include "Saturation/SaturationAlgorithm.hpp"
 
@@ -88,16 +89,16 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // This is easy here, since we just need to compare the outermost predicate symbol.
     // The question is how we can properly generalize this matching for other theory rules.
     auto it3 = getFilteredIterator(it2, [](Literal* lit) -> bool {
-        return lit->isPositive() && (lit->functor() == pred_int_less);
+        return lit->isPositive()
+            && (lit->functor() == pred_int_less);
     });
 
 
     using LiteralIterator = VirtualIterator<Literal*>;
 
-    // auto it4 = getMappingIteratorKnownRes<std::pair<Literal*,LiteralIterator>>(it3, [this](Literal* lit) {
-    auto it4 = getSideEffectIterator(it3, [this](Literal* lit) {
-        // lit = $less(t1, t2).
-        // match against $less(t3, t4) such that there is a unification of t2 and t3.
+    auto it4 = getMappingIteratorKnownRes<VirtualIterator<std::pair<Literal*,TermQueryResult>>>(it3, [this](Literal* lit) {
+        // Here: lit = $less(t1, t2).
+        // Goal: match against $less(t3, t4) such that there is a unification of t2 and t3.
         TermList* t2 = lit->nthArgument(1);
 
         std::cerr << "\tFinding unifications for: " << t2->toString() << std::endl;
@@ -111,23 +112,44 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
             // std::cerr << "\t\tSubstitution: " << unif.substitution->toString() << std::endl;
             // std::cerr << "\t\tConstraints: " << unif.constraints->toString() << std::endl;
         }
-        // TODO: Unification
 
-        // return std::make_pair(lit, LiteralIterator::getEmpty());
+        // TODO
+        // This isn't quite right.
+        // We only want to match the LHS of the other term, but as it is now it will also match the right-hand side.
+        // (we probably need a different index type, or add some constraints; something we want to do eventually anyways for more efficient matching)
+
+        // All unifications with t2
+        auto unifIt1 = _subtermIndex->getUnifications(*t2);
+
+        // Filter to positive literals of form "t < u"
+        auto unifIt2 = getFilteredIterator(unifIt1, [](TermQueryResult unif) -> bool {
+            Literal* l = unif.literal;
+            return l->isPositive()
+                && (l->functor() == pred_int_less)
+                && (unif.term == *l->nthArgument(0));  // only match the left argument
+        });
+
+        // Annotate each result with the currently selected literal
+        auto unifIt3 = pushPairIntoRightIterator(lit, unifIt2);
+
+        return pvi(unifIt3);
     });
 
-    // pushPairIntoRightIterator
+    auto it5 = getFlattenedIterator(it4);
 
-    auto printIt = it4;
+
+    auto finalIt = it5;
+    auto printIt = getSideEffectIterator(finalIt, [](ELEMENT_TYPE(decltype(finalIt)) x) -> void {
+        // std::cerr << "ITERATOR ELEMENT: " << x->toString() << std::endl;
+        std::cerr << "ITERATOR ELEMENT: " << x.first->toString() << " / " << x.second.literal->toString() << std::endl;
+    });
+
+    // Just for debugging
     while (printIt.hasNext()) {
-        auto x = printIt.next();
-        std::cerr << "ITERATOR ELEMENT: " << x->toString() << std::endl;
+        printIt.next();
     }
-
-    // auto it2 = premise->
-
     std::cerr << std::endl;
 
-    // return pvi(it2);
+    // return pvi(printIt);
     return ClauseIterator::getEmpty();
 }
