@@ -13,40 +13,46 @@ void TransitivityRuleExperiment::attach(SaturationAlgorithm* salg)
     CALL("TransitivityRuleExperiment::attach");
 
     GeneratingInferenceEngine::attach(salg);
-    // TODO: Get necessary indexing stuff from _salg->getIndexManager()
-    // _salg->getIndexManager()->request( /* TODO */ );
+
+    _subtermIndex = static_cast<SuperpositionSubtermIndex*>(
+        _salg->getIndexManager()->request(SUPERPOSITION_SUBTERM_SUBST_TREE));
 }
 
 void TransitivityRuleExperiment::detach()
 {
     CALL("TransitivityRuleExperiment::detach");
 
-    // TODO: release indexing stuff here
+    _subtermIndex = nullptr;
+    _salg->getIndexManager()->release(SUPERPOSITION_SUBTERM_SUBST_TREE);
+
     GeneratingInferenceEngine::detach();
 }
 
 namespace {
-    // // template <typename T>
-    // struct DebugPrintFn
-    // {
-    //     DebugPrintFn() {}
-    //     DECL_RETURN_TYPE(Clause*);
-    //     OWN_RETURN_TYPE operator()(Clause* cl)
-    //     {
-    //         CALL("DebugPrintFn::operator()");
-    //         std::cerr << cl->toString() << std::endl;
-    //         return cl;
-    //     }
-    // };
-    template <typename Inner, typename ElementType=ELEMENT_TYPE(Inner), typename Function>
-    MappingIterator<Inner,std::function<ElementType(ElementType)>,ElementType>
-    getSideEffectIterator(Inner it, Function f) {
-        auto fn = std::function<ElementType(ElementType)>([f] (ElementType el) {
-            f(el);
-            return el;
-        });
-        return getMappingIteratorKnownRes<ElementType>(it, fn);
-    }
+
+// // template <typename T>
+// struct DebugPrintFn
+// {
+//     DebugPrintFn() {}
+//     DECL_RETURN_TYPE(Clause*);
+//     OWN_RETURN_TYPE operator()(Clause* cl)
+//     {
+//         CALL("DebugPrintFn::operator()");
+//         std::cerr << cl->toString() << std::endl;
+//         return cl;
+//     }
+// };
+
+template <typename Inner, typename ElementType=ELEMENT_TYPE(Inner), typename Function>
+MappingIterator<Inner,std::function<ElementType(ElementType)>,ElementType>
+getSideEffectIterator(Inner it, Function f) {
+    auto fn = std::function<ElementType(ElementType)>([f] (ElementType el) {
+        f(el);
+        return el;
+    });
+    return getMappingIteratorKnownRes<ElementType>(it, fn);
+}
+
 }
 
 ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
