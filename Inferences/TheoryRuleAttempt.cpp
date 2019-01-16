@@ -94,17 +94,31 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
     using LiteralIterator = VirtualIterator<Literal*>;
 
-    auto it4 = getMappingIteratorKnownRes<std::pair<Literal*,LiteralIterator>>(it3, [](Literal* lit) {
+    // auto it4 = getMappingIteratorKnownRes<std::pair<Literal*,LiteralIterator>>(it3, [this](Literal* lit) {
+    auto it4 = getSideEffectIterator(it3, [this](Literal* lit) {
         // lit = $less(t1, t2).
         // match against $less(t3, t4) such that there is a unification of t2 and t3.
         TermList* t2 = lit->nthArgument(1);
+
+        std::cerr << "\tFinding unifications for: " << t2->toString() << std::endl;
+        auto unifs = _subtermIndex->getUnifications(*t2);
+        while (unifs.hasNext()) {
+            auto unif = unifs.next();
+            std::cerr << "\tUnification result:" << std::endl;
+            std::cerr << "\t\tClause: " << unif.clause->toString() << std::endl;
+            std::cerr << "\t\tLiteral: " << unif.literal->toString() << std::endl;
+            std::cerr << "\t\tTerm: " << unif.term.toString() << std::endl;
+            // std::cerr << "\t\tSubstitution: " << unif.substitution->toString() << std::endl;
+            // std::cerr << "\t\tConstraints: " << unif.constraints->toString() << std::endl;
+        }
         // TODO: Unification
-        return std::make_pair(lit, LiteralIterator::getEmpty());
+
+        // return std::make_pair(lit, LiteralIterator::getEmpty());
     });
 
     // pushPairIntoRightIterator
 
-    auto printIt = it3;
+    auto printIt = it4;
     while (printIt.hasNext()) {
         auto x = printIt.next();
         std::cerr << "ITERATOR ELEMENT: " << x->toString() << std::endl;
