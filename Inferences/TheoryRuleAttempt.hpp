@@ -45,7 +45,10 @@ class TransitivityRuleExperiment
 
 
     private:
-        SuperpositionSubtermIndex* _subtermIndex;
+        SuperpositionSubtermIndex* _supSubtermIndex;
+        SuperpositionLHSIndex* _supLHSIndex;
+        DemodulationSubtermIndex* _demSubtermIndex;
+        DemodulationLHSIndex* _demLHSIndex;
 };
 
 

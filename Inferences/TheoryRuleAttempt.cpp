@@ -16,15 +16,27 @@ void TransitivityRuleExperiment::attach(SaturationAlgorithm* salg)
 
     GeneratingInferenceEngine::attach(salg);
 
-    _subtermIndex = static_cast<SuperpositionSubtermIndex*>(
+    _supSubtermIndex = static_cast<SuperpositionSubtermIndex*>(
         _salg->getIndexManager()->request(SUPERPOSITION_SUBTERM_SUBST_TREE));
+    _supLHSIndex = static_cast<SuperpositionLHSIndex*>(
+        _salg->getIndexManager()->request(SUPERPOSITION_LHS_SUBST_TREE));
+    _demSubtermIndex = static_cast<DemodulationSubtermIndex*>(
+        _salg->getIndexManager()->request(DEMODULATION_SUBTERM_SUBST_TREE));
+    _demLHSIndex = static_cast<DemodulationLHSIndex*>(
+        _salg->getIndexManager()->request(DEMODULATION_LHS_SUBST_TREE));
 }
 
 void TransitivityRuleExperiment::detach()
 {
     CALL("TransitivityRuleExperiment::detach");
 
-    _subtermIndex = nullptr;
+    _demLHSIndex = nullptr;
+    _salg->getIndexManager()->release(DEMODULATION_LHS_SUBST_TREE);
+    _demSubtermIndex = nullptr;
+    _salg->getIndexManager()->release(DEMODULATION_SUBTERM_SUBST_TREE);
+    _supLHSIndex = nullptr;
+    _salg->getIndexManager()->release(SUPERPOSITION_LHS_SUBST_TREE);
+    _supSubtermIndex = nullptr;
     _salg->getIndexManager()->release(SUPERPOSITION_SUBTERM_SUBST_TREE);
 
     GeneratingInferenceEngine::detach();
@@ -66,7 +78,6 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     auto it2 = getSideEffectIterator(it1, [](Literal* lit) -> void {
         std::cerr << "Selected literal: " << lit->toString() << std::endl;
         std::cerr << "\tFunctor: " << lit->functor() << std::endl;
-        std::cerr << "\tFunction name: " << lit->functionName() << std::endl;
         std::cerr << "\tPredicate name: " << lit->predicateName() << std::endl;
         std::cerr << "\tsecond argument: " << lit->nthArgument(1)->toString() << std::endl;
     });
@@ -88,17 +99,29 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         // Goal: match against $less(t3, t4) such that there is a unification of t2 and t3.
         TermList* t2 = lit->nthArgument(1);
 
-        // std::cerr << "\tFinding unifications for: " << t2->toString() << std::endl;
-        // auto unifs = _subtermIndex->getUnifications(*t2);
-        // while (unifs.hasNext()) {
-        //     auto unif = unifs.next();
-        //     std::cerr << "\tUnification result:" << std::endl;
-        //     std::cerr << "\t\tClause: " << unif.clause->toString() << std::endl;
-        //     std::cerr << "\t\tLiteral: " << unif.literal->toString() << std::endl;
-        //     std::cerr << "\t\tTerm: " << unif.term.toString() << std::endl;
-        //     // std::cerr << "\t\tSubstitution: " << unif.substitution->toString() << std::endl;
-        //     // std::cerr << "\t\tConstraints: " << unif.constraints->toString() << std::endl;
-        // }
+        auto printQueryResults = [](VirtualIterator<TermQueryResult> it) -> void {
+            while (it.hasNext()) {
+                auto unif = it.next();
+                std::cerr << "\t\tTermQueryResult:" << std::endl;
+                std::cerr << "\t\t\tClause: " << unif.clause->toString() << std::endl;
+                std::cerr << "\t\t\tLiteral: " << unif.literal->toString() << std::endl;
+                std::cerr << "\t\t\tTerm: " << unif.term.toString() << std::endl;
+                // std::cerr << "\t\tSubstitution: " << unif.substitution->toString() << std::endl;
+                // std::cerr << "\t\tConstraints: " << unif.constraints->toString() << std::endl;
+            }
+        };
+
+        std::cerr << "\tSuperpositionSubtermIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
+        printQueryResults(_supSubtermIndex->getUnifications(*t2));
+
+        std::cerr << "\tSuperpositionLHSIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
+        printQueryResults(_supLHSIndex->getUnifications(*t2));
+
+        std::cerr << "\tDemodulationSubtermIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
+        printQueryResults(_demSubtermIndex->getUnifications(*t2));
+
+        // std::cerr << "\tDemodulationLHSIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
+        // printQueryResults(_demLHSIndex->getUnifications(*t2));
 
         // TODO
         // This isn't quite right.
@@ -106,7 +129,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         // (we probably need a different index type, or add some constraints; something we want to do eventually anyways for more efficient matching)
 
         // All unifications with t2
-        auto unifIt1 = _subtermIndex->getUnifications(*t2);
+        auto unifIt1 = _supSubtermIndex->getUnifications(*t2);
 
         // Filter to positive literals of form "t < u"
         auto unifIt2 = getFilteredIterator(unifIt1, [](TermQueryResult unif) -> bool {
