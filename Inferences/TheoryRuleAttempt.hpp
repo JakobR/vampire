@@ -52,6 +52,34 @@ class TransitivityRuleExperiment
 };
 
 
+/*
+ * TODO
+ * --show_theory_axioms doesn't print all axioms that are added.
+ *
+ * Make sure that we add no axioms when we set --theory_axioms off.
+ * (also check value "some")
+ *
+ * options: --evaluation off or so??
+ * two parts: normalizing (in preprocessing), simplification (during saturation)
+ *
+ * Goal: to have full control over theory reasoning
+ * => do this off the master branch so we can merge it in when it's done
+ */
+
+/*
+ * vampire options:
+ * prioritize axioms vs hypothesis (which do you trust more?)
+ */
+
+/*
+ * Replace all theory axioms by inference rules in clausal orientation:
+ * Only difference here is that we get a penalty.
+ * => see how the penalty changes the proofs
+ *
+ * For a first version, just add the penalty to TheoryAxioms.cpp
+ * Also output penalty so we can use it for proof visualization.
+ */
+
 }
 
 #endif /* !THEORYRULEATTEMPT_HPP */

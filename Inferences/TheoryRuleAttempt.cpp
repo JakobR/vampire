@@ -59,7 +59,6 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 {
     CALL("TransitivityRuleExperiment::generateClauses");
 
-    // TODO
     // Plan:
     // 1. Match given clause against "x < y".
     // 2. Search active clause set for a clause of form "y < z".
@@ -94,6 +93,8 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
     using LiteralIterator = VirtualIterator<Literal*>;
 
+    // it3: selected literals of premise of the form "t1 < t2"
+    // it4 looks for matches "t2 < t3"
     auto it4 = getMappingIteratorKnownRes<VirtualIterator<std::pair<Literal*,TermQueryResult>>>(it3, [this](Literal* lit) {
         // Here: lit = $less(t1, t2).
         // Goal: match against $less(t3, t4) such that there is a unification of t2 and t3.
@@ -129,6 +130,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         // (we probably need a different index type, or add some constraints; something we want to do eventually anyways for more efficient matching)
 
         // All unifications with t2
+        // TODO: use ResolutionIndex (since superposition uses equality which is commutative)
         auto unifIt1 = _supSubtermIndex->getUnifications(*t2);
 
         // Filter to positive literals of form "t < u"
@@ -153,11 +155,12 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
     auto it6 = getMappingIteratorKnownRes<Clause*>(it5, [premise](std::pair<Literal*,TermQueryResult> arg) {
         Clause* cl1 = premise;
-        Literal* lit1 = arg.first;
+        Literal* lit1 = arg.first;            // a < b
 
         Clause* cl2 = arg.second.clause;
-        Literal* lit2 = arg.second.literal;
+        Literal* lit2 = arg.second.literal;   // b < c
 
+        // TODO: assumption: no duplicated literals in cl1 cl2
         int len1 = cl1->length();
         int len2 = cl2->length();
         int nlen = len1 + len2 - 1;
@@ -169,10 +172,11 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         auto s = arg.second.substitution;
         TermList t1 = s->applyToQuery(*lit1->nthArgument(0));
         TermList t2 = s->applyToResult(*lit2->nthArgument(1));
-        Literal* lit = Literal::create2(pred_int_less, true, t1, t2);
+        Literal* lit = Literal::create2(pred_int_less, true, t1, t2);   // a < c
 
         (*res)[0] = lit;
 
+        // TODO: do we have to obey some invariant on the order of literals in clauses?
         int next = 1;
         for (int i = 0; i < len1; ++i) {
             Literal* curr = (*cl1)[i];
@@ -192,7 +196,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         }
         ASS(next == 1 + (len1 - 1) + (len2 - 1));
 
-        res->setAge(std::max(cl1->age(), cl2->age()));  // TODO ???
+        res->setAge(std::max(cl1->age(), cl2->age()) + 1);  // TODO ???
 
         return res;
     });
