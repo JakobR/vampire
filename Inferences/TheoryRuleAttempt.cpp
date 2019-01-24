@@ -162,7 +162,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         int len2 = cl2->length();
         int nlen = len1 + len2 - 1;
 
-        Inference* inf = new Inference2(Inference::THEORY_INFERENCE_RULE, cl1, cl2);
+        Inference* inf = new Inference2(Inference::THEORY_INFERENCE_RULE_TRANSITIVITY, cl1, cl2);
         Unit::InputType inpType = (Unit::InputType)max(cl1->inputType(), cl2->inputType());  // ??? (copied from ForwardSubsumptionAndResolution::generateSubsumptionResolutionClause)
         Clause* res = new(nlen) Clause(nlen, inpType, inf);
 

@@ -316,7 +316,13 @@ public:
     /* Inductive strengthening*/
     INDUCTIVE_STRENGTH,
     /* Theory inference rule */
-    THEORY_INFERENCE_RULE,              // TODO(JR): better name
+    // TODO:
+    // How to integrate our generic rule interface?
+    // We could make a single tag, and create a new subclass of Inference
+    // that also stores the name as string.
+    // We also might have to make name() virtual so we can override it in the subclass,
+    // and add some default value like "<unspecified theory inference rule>" to ruleName().
+    THEORY_INFERENCE_RULE_TRANSITIVITY,
   }; // class Inference::Rule
 
   explicit Inference(Rule r);

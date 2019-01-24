@@ -473,8 +473,8 @@ vstring Inference::ruleName(Rule rule)
     return "induction hypothesis";
   case INDUCTIVE_STRENGTH:
     return "inductive strengthening";
-  case THEORY_INFERENCE_RULE:           // TODO(JR): better name
-    return "theory inference rule";
+  case THEORY_INFERENCE_RULE_TRANSITIVITY:
+    return "transitivity rule";
   default:
     ASSERTION_VIOLATION;
     return "!UNKNOWN INFERENCE RULE!";
