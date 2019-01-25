@@ -151,7 +151,8 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         return pvi(unifIt4);
     });
 
-    auto it5 = getFlattenedIterator(it4);
+    // Use a VirtualIterator here because only the specialization for VirtualIterator<VirtualIterator<T>> is lazy
+    auto it5 = getFlattenedIterator(pvi(it4));
 
     auto it6 = getMappingIteratorKnownRes<Clause*>(it5, [premise](std::pair<Literal*,TermQueryResult> arg) {
         Clause* cl1 = premise;
