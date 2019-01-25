@@ -195,7 +195,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         }
         ASS(next == 1 + (len1 - 1) + (len2 - 1));
 
-        res->setAge(std::max(cl1->age(), cl2->age()) + 1);  // TODO ???
+        res->setAge(std::max(cl1->age(), cl2->age()) + 1);
         res->setPenalty(cl1->penalty() + cl2->penalty() + 5);
 
         return res;

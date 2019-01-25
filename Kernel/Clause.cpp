@@ -120,6 +120,7 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
   // To distinguish between generating and simplifying inferences, we can move this code to the SaturationAlgorithm, where InferenceEngine::generateClauses() etc. is called.
   // However, the correct place would be the inference engine itself (where the clause is being built).
   _penalty = 1;  // basic inferences incur a penalty of 1; TODO: maybe simplifications should only get a penalty of 0.
+  // TODO: maybe extract the following into a function computeParentPenalty(); and another function like setPenalty() that automatically adds the parent penalty (so we only have to add the *additional* value when creating a new clause)
   auto parentIt = inf->iterator();
   while (inf->hasNext(parentIt)) {
       Unit* parent = inf->next(parentIt);
