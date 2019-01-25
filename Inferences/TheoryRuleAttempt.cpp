@@ -64,8 +64,8 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // 2. Search active clause set for a clause of form "y < z".
     // 3. Return clause: "x < z".
 
-    std::cerr << "\nTransitivityRuleExperiment::generateClauses:\n";
-    std::cerr << "Given: " << premise->toString() << std::endl;
+    // std::cerr << "\nTransitivityRuleExperiment::generateClauses:\n";
+    // std::cerr << "Given: " << premise->toString() << std::endl;
 
     static unsigned const pred_int_less = env.signature->getInterpretingSymbol(Theory::INT_LESS);
 
@@ -90,8 +90,6 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
             && (lit->functor() == pred_int_less);
     });
 
-
-    using LiteralIterator = VirtualIterator<Literal*>;
 
     // it3: selected literals of premise of the form "t1 < t2"
     // it4 looks for matches "t2 < t3"
@@ -214,6 +212,9 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // }
     // std::cerr << std::endl;
 
+    // TODO: why do we get output if we never use the iterator?
+    // => FlattenedIterator is not lazy enough, unless it operates on VirtualIterator<VirtualIterator<T>>!
+
+    return ClauseIterator::getEmpty();  // uncommenting this disables the transitivity rule
     return pvi(printIt);
-    // return ClauseIterator::getEmpty();
 }
