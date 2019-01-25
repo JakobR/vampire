@@ -216,6 +216,6 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // TODO: why do we get output if we never use the iterator?
     // => FlattenedIterator is not lazy enough, unless it operates on VirtualIterator<VirtualIterator<T>>!
 
-    return ClauseIterator::getEmpty();  // uncommenting this disables the transitivity rule
+    // return ClauseIterator::getEmpty();  // NOTE: uncommenting this disables the transitivity rule
     return pvi(printIt);
 }
