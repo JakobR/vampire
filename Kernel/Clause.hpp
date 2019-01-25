@@ -176,6 +176,16 @@ public:
   }
   void computeWeight() const;
 
+  unsigned penalty() const
+  {
+      return _penalty;
+  }
+  void setPenalty(unsigned p)
+  {
+      _penalty = p;
+      _weight = 0;   // need to recompute weight after changing penalty
+  }
+
   /** Return the color of a clause */
   Color color() const
   {
@@ -376,6 +386,8 @@ protected:
   unsigned _age;
   /** weight */
   mutable unsigned _weight;
+  /** penalty from inferences */
+  unsigned _penalty;
   /** storage class */
   Store _store;
   /** in active index **/

@@ -78,6 +78,7 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
     _numSelected(0),
     _age(0),
     _weight(0),
+    _penalty(0),
     _store(NONE),
     _in_active(0),
     _refCnt(0),
@@ -113,6 +114,18 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
     }
     _theoryDescendant=td;
     _inductionDepth=id;
+  }
+
+  // TODO:
+  // To distinguish between generating and simplifying inferences, we can move this code to the SaturationAlgorithm, where InferenceEngine::generateClauses() etc. is called.
+  // However, the correct place would be the inference engine itself (where the clause is being built).
+  _penalty = 1;  // basic inferences incur a penalty of 1; TODO: maybe simplifications should only get a penalty of 0.
+  auto parentIt = inf->iterator();
+  while (inf->hasNext(parentIt)) {
+      Unit* parent = inf->next(parentIt);
+      if (parent->isClause()) {
+          _penalty += static_cast<Clause*>(parent)->penalty();
+      }
   }
 
 //#if VDEBUG
@@ -442,6 +455,11 @@ vstring Clause::toString() const
   }
   if(isGoal()){ result += ":G"; }
   result += ") ";
+
+  if (penalty() > 0) {
+      result += "P(" + Int::toString(penalty()) + ") ";
+  }
+
   if(isTheoryDescendant()){
     result += "T ";
   }
@@ -525,6 +543,8 @@ void Clause::computeWeight() const
   if (env.options->nonliteralsInClauseWeight()) {
     _weight+=splitWeight(); // no longer includes propWeight
   }
+
+  _weight += _penalty;
 
   // If _weight is zero (empty clause) then no need to do this
   if(_weight){
