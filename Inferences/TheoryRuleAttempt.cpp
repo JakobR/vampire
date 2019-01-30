@@ -117,6 +117,14 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // The question is how we can properly generalize this matching for other theory rules.
     // TODO: Check how the instance check of LiteralIndex->getInstances() works. We can probably reuse that.
     auto it3 = getFilteredIterator(it2, [](Literal* lit) -> bool {
+
+        // TermList x(0, false);
+        // TermList y(1, false);
+        // Literal* query = Literal::create2(pred_int_less, true, x, y);
+
+        // It probably does not make sense to create a new substitution tree just for matching here.
+        // We could either use lambdas with ad-hoc checks as here, or implement our own function for instance checking.
+
         return lit->isPositive()
             && (lit->functor() == pred_int_less);
     });
