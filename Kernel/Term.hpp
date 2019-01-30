@@ -149,7 +149,7 @@ public:
   static bool allShared(TermList* args);
   /** if not var, the inner term must be shared */
   unsigned weight() const;
-  bool containsSubterm(TermList v);
+  bool containsSubterm(TermList v) const;
   bool containsAllVariablesOf(TermList t);
 
   bool isSafe() const;
@@ -515,7 +515,7 @@ public:
 #endif
   }
 
-  bool containsSubterm(TermList v);
+  bool containsSubterm(TermList v) const;
   bool containsAllVariablesOf(Term* t);
   /** Return true if term has no non-constant functions as subterms */
   bool isShallow() const;

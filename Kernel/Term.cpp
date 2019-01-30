@@ -252,7 +252,7 @@ unsigned TermList::weight() const
   return isVar() ? 1 : term()->weight();
 }
 
-bool TermList::containsSubterm(TermList trm)
+bool TermList::containsSubterm(TermList trm) const
 {
   CALL("Term::containsSubterm");
 
@@ -262,7 +262,7 @@ bool TermList::containsSubterm(TermList trm)
   return term()->containsSubterm(trm);
 }
 
-bool Term::containsSubterm(TermList trm)
+bool Term::containsSubterm(TermList trm) const
 {
   CALL("Term::containsSubterm");
   ASS(!trm.isTerm() || trm.term()->shared());
@@ -276,8 +276,8 @@ bool Term::containsSubterm(TermList trm)
     return false;
   }
 
-  TermList* ts=args();
-  static Stack<TermList*> stack(4);
+  TermList const* ts=args();
+  static Stack<TermList const*> stack(4);
   stack.reset();
   for(;;) {
     if (*ts==trm) {
