@@ -50,9 +50,15 @@ class TransitivityRuleExperiment
         SuperpositionLHSIndex* _supLHSIndex;
         DemodulationSubtermIndex* _demSubtermIndex;
         DemodulationLHSIndex* _demLHSIndex;
-        GeneratingLiteralIndex* _glIndex;
-};
 
+        GeneratingLiteralIndex* _glIndex;
+        SimplifyingLiteralIndex* _slIndex;
+        FwSubsSimplifyingLiteralIndex* _fwsslIndex;
+        UnitClauseLiteralIndex* _suclIndex;   // there's a simplifying and a generating version
+        UnitClauseLiteralIndex* _guclIndex;
+        NonUnitClauseLiteralIndex* _nuclIndex;
+        RewriteRuleIndex* _rrIndex;
+};
 
 /*
  * TODO

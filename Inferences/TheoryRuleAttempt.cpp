@@ -17,6 +17,7 @@ void TransitivityRuleExperiment::attach(SaturationAlgorithm* salg)
 
     GeneratingInferenceEngine::attach(salg);
 
+    // TermIndex
     _supSubtermIndex = static_cast<SuperpositionSubtermIndex*>(
         _salg->getIndexManager()->request(SUPERPOSITION_SUBTERM_SUBST_TREE));
     _supLHSIndex = static_cast<SuperpositionLHSIndex*>(
@@ -25,8 +26,22 @@ void TransitivityRuleExperiment::attach(SaturationAlgorithm* salg)
         _salg->getIndexManager()->request(DEMODULATION_SUBTERM_SUBST_TREE));
     _demLHSIndex = static_cast<DemodulationLHSIndex*>(
         _salg->getIndexManager()->request(DEMODULATION_LHS_SUBST_TREE));
+
+    // LiteralIndex
     _glIndex = static_cast<GeneratingLiteralIndex*>(
         _salg->getIndexManager()->request(GENERATING_SUBST_TREE));
+    _slIndex = static_cast<SimplifyingLiteralIndex*>(
+        _salg->getIndexManager()->request(SIMPLIFYING_SUBST_TREE));
+    _fwsslIndex = static_cast<FwSubsSimplifyingLiteralIndex*>(
+        _salg->getIndexManager()->request(FW_SUBSUMPTION_SUBST_TREE));
+    _suclIndex = static_cast<UnitClauseLiteralIndex*>(
+        _salg->getIndexManager()->request(SIMPLIFYING_UNIT_CLAUSE_SUBST_TREE));
+    _guclIndex = static_cast<UnitClauseLiteralIndex*>(
+        _salg->getIndexManager()->request(GENERATING_UNIT_CLAUSE_SUBST_TREE));
+    _nuclIndex = static_cast<NonUnitClauseLiteralIndex*>(
+        _salg->getIndexManager()->request(GENERATING_NON_UNIT_CLAUSE_SUBST_TREE));
+    _rrIndex = static_cast<RewriteRuleIndex*>(
+        _salg->getIndexManager()->request(REWRITE_RULE_SUBST_TREE));
 }
 
 void TransitivityRuleExperiment::detach()
@@ -41,8 +56,21 @@ void TransitivityRuleExperiment::detach()
     _salg->getIndexManager()->release(SUPERPOSITION_LHS_SUBST_TREE);
     _supSubtermIndex = nullptr;
     _salg->getIndexManager()->release(SUPERPOSITION_SUBTERM_SUBST_TREE);
+
     _glIndex = nullptr;
     _salg->getIndexManager()->release(GENERATING_SUBST_TREE);
+    _slIndex = nullptr;
+    _salg->getIndexManager()->release(SIMPLIFYING_SUBST_TREE);
+    _fwsslIndex = nullptr;
+    _salg->getIndexManager()->release(FW_SUBSUMPTION_SUBST_TREE);
+    _suclIndex = nullptr;
+    _salg->getIndexManager()->release(SIMPLIFYING_UNIT_CLAUSE_SUBST_TREE);
+    _guclIndex = nullptr;
+    _salg->getIndexManager()->release(GENERATING_UNIT_CLAUSE_SUBST_TREE);
+    _nuclIndex = nullptr;
+    _salg->getIndexManager()->release(GENERATING_NON_UNIT_CLAUSE_SUBST_TREE);
+    _rrIndex = nullptr;
+    _salg->getIndexManager()->release(REWRITE_RULE_SUBST_TREE);
 
     GeneratingInferenceEngine::detach();
 }
@@ -78,9 +106,9 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
     auto it2 = getSideEffectIterator(it1, [](Literal* lit) -> void {
         std::cerr << "Selected literal: " << lit->toString() << std::endl;
-        std::cerr << "\tFunctor: " << lit->functor() << std::endl;
-        std::cerr << "\tPredicate name: " << lit->predicateName() << std::endl;
-        std::cerr << "\tsecond argument: " << lit->nthArgument(1)->toString() << std::endl;
+        // std::cerr << "\tFunctor: " << lit->functor() << std::endl;
+        // std::cerr << "\tPredicate name: " << lit->predicateName() << std::endl;
+        // std::cerr << "\tsecond argument: " << lit->nthArgument(1)->toString() << std::endl;
     });
 
     // Filter iterator to positive literals of form "x < y"
@@ -102,30 +130,29 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         TermList const t2 = *lit->nthArgument(1);
 
         /*
-        auto printQueryResults = [](VirtualIterator<TermQueryResult> it) -> void {
+        auto printTermQueryResults = [](VirtualIterator<TermQueryResult> it) -> void {
             while (it.hasNext()) {
                 auto unif = it.next();
                 std::cerr << "\t\tTermQueryResult:" << std::endl;
                 std::cerr << "\t\t\tClause: " << unif.clause->toString() << std::endl;
                 std::cerr << "\t\t\tLiteral: " << unif.literal->toString() << std::endl;
                 std::cerr << "\t\t\tTerm: " << unif.term.toString() << std::endl;
-                // std::cerr << "\t\tSubstitution: " << unif.substitution->toString() << std::endl;
-                // std::cerr << "\t\tConstraints: " << unif.constraints->toString() << std::endl;
             }
         };
 
         std::cerr << "\tSuperpositionSubtermIndex::getUnifications(...) for term: " << t2.toString() << std::endl;
-        printQueryResults(_supSubtermIndex->getUnifications(t2));
+        printTermQueryResults(_supSubtermIndex->getUnifications(t2));
 
         std::cerr << "\tSuperpositionLHSIndex::getUnifications(...) for term: " << t2.toString() << std::endl;
-        printQueryResults(_supLHSIndex->getUnifications(t2));
+        printTermQueryResults(_supLHSIndex->getUnifications(t2));
 
         std::cerr << "\tDemodulationSubtermIndex::getUnifications(...) for term: " << t2.toString() << std::endl;
-        printQueryResults(_demSubtermIndex->getUnifications(t2));
+        printTermQueryResults(_demSubtermIndex->getUnifications(t2));
 
         std::cerr << "\tDemodulationLHSIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
-        printQueryResults(_demLHSIndex->getUnifications(*t2));
+        printTermQueryResults(_demLHSIndex->getUnifications(*t2));
         */
+
 
         // Find a variable that does not appear in t2
         std::cerr << "\tFormulaVarIterator on " << t2.toString() << ": [";
@@ -139,21 +166,41 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
             }
         }
         std::cerr << " ]" << std::endl;
+
+        // Create "template" literal for matching
         TermList x(maxVar + 1, false);
         ASS(!t2.containsSubterm(x));
-        Literal* lQuery = Literal::create2(pred_int_less, true, t2, x);
+        Literal* lQuery = Literal::create2(pred_int_less, true, t2, x);  // TODO: is this shared or not? and what exactly does that mean?
+        std::cerr << "\tQuery literal: " << lQuery->toString() << std::endl;
 
+        // Compare different LiteralIndexes
+        auto printSLQueryResults = [](VirtualIterator<SLQueryResult> it) -> void {
+            while (it.hasNext()) {
+                auto unif = it.next();
+                std::cerr << "\t\tSLQueryResult:" << std::endl;
+                std::cerr << "\t\t\tClause: " << unif.clause->toString() << std::endl;
+                std::cerr << "\t\t\tLiteral: " << unif.literal->toString() << std::endl;
+            }
+        };
         std::cerr << "\tGeneratingLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
-        auto resultIt = _glIndex->getUnifications(lQuery, false, true);
-        while (resultIt.hasNext()) {
-            auto unif = resultIt.next();
-            std::cerr << "\t\tSLQueryResult:" << std::endl;
-            std::cerr << "\t\t\tClause: " << unif.clause->toString() << std::endl;
-            std::cerr << "\t\t\tLiteral: " << unif.literal->toString() << std::endl;
-        }
-
+        printSLQueryResults(_glIndex->getUnifications(lQuery, false, true));
+        std::cerr << "\tGeneratingLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
+        printSLQueryResults(_glIndex->getUnifications(lQuery, false, true));
+        std::cerr << "\tSimplifyingLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
+        printSLQueryResults(_slIndex->getUnifications(lQuery, false, true));
+        std::cerr << "\tFwSubsSimplifyingLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
+        printSLQueryResults(_fwsslIndex->getUnifications(lQuery, false, true));
+        std::cerr << "\tSimplifying UnitClauseLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
+        printSLQueryResults(_suclIndex->getUnifications(lQuery, false, true));
+        std::cerr << "\tGenerating UnitClauseLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
+        printSLQueryResults(_guclIndex->getUnifications(lQuery, false, true));
+        std::cerr << "\tNonUnitClauseLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
+        printSLQueryResults(_nuclIndex->getUnifications(lQuery, false, true));
+        std::cerr << "\tRewriteRuleIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
+        printSLQueryResults(_rrIndex->getUnifications(lQuery, false, true));
 
         auto unifIt1 = _glIndex->getUnifications(lQuery, false, true);
+        // lQuery->destroyNonShared();  // TODO: Can/should we destroy the query literal here???
 
         auto unifIt2 = getSideEffectIterator(unifIt1, [](ELEMENT_TYPE(decltype(unifIt1)) unif) {
             std::cerr << "\t\tSLQueryResult:" << std::endl;
@@ -165,29 +212,6 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         auto unifIt3 = pushPairIntoRightIterator(lit, unifIt2);
 
         return pvi(unifIt3);
-
-        /*
-        // All unifications with t2
-        // TODO: use ResolutionIndex (since superposition uses equality which is commutative)
-        auto unifIt1 = _supSubtermIndex->getUnifications(t2);
-
-        // Filter to positive literals of form "t < u"
-        auto unifIt2 = getFilteredIterator(unifIt1, [](TermQueryResult unif) -> bool {
-            Literal* l = unif.literal;
-            return l->isPositive()
-                && (l->functor() == pred_int_less)
-                && (unif.term == *l->nthArgument(0));  // only match the left argument
-        });
-
-        // Annotate each result with the currently selected literal
-        auto unifIt3 = pushPairIntoRightIterator(lit, unifIt2);
-
-        auto unifIt4 = getSideEffectIterator(unifIt3, [](ELEMENT_TYPE(decltype(unifIt3)) x) {
-            std::cerr << "\tMatched literals: " << x.first->toString() << " /// " << x.second.literal->toString() << std::endl;
-        });
-
-        return pvi(unifIt4);
-        */
     });
 
     // Use a VirtualIterator here because only the specialization of getFlattenedIterator for VirtualIterator<VirtualIterator<T>> is lazy enough
