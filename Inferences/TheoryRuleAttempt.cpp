@@ -1,5 +1,6 @@
 #include "TheoryRuleAttempt.hpp"
 
+#include "Kernel/FormulaVarIterator.hpp"
 #include "Kernel/Inference.hpp"
 #include "Kernel/Signature.hpp"
 #include "Lib/PairUtils.hpp"
@@ -24,6 +25,8 @@ void TransitivityRuleExperiment::attach(SaturationAlgorithm* salg)
         _salg->getIndexManager()->request(DEMODULATION_SUBTERM_SUBST_TREE));
     _demLHSIndex = static_cast<DemodulationLHSIndex*>(
         _salg->getIndexManager()->request(DEMODULATION_LHS_SUBST_TREE));
+    _glIndex = static_cast<GeneratingLiteralIndex*>(
+        _salg->getIndexManager()->request(GENERATING_SUBST_TREE));
 }
 
 void TransitivityRuleExperiment::detach()
@@ -38,6 +41,8 @@ void TransitivityRuleExperiment::detach()
     _salg->getIndexManager()->release(SUPERPOSITION_LHS_SUBST_TREE);
     _supSubtermIndex = nullptr;
     _salg->getIndexManager()->release(SUPERPOSITION_SUBTERM_SUBST_TREE);
+    _glIndex = nullptr;
+    _salg->getIndexManager()->release(GENERATING_SUBST_TREE);
 
     GeneratingInferenceEngine::detach();
 }
@@ -70,10 +75,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     static unsigned const pred_int_less = env.signature->getInterpretingSymbol(Theory::INT_LESS);
 
     auto it1 = premise->getSelectedLiteralIterator();
-    // auto it2 = getMappingIteratorKnownRes<Literal*>(it1, [](Literal* lit) {
-    //         std::cerr << "Selected literal: " << lit->toString() << std::endl;
-    //         return lit;
-    //     });
+
     auto it2 = getSideEffectIterator(it1, [](Literal* lit) -> void {
         std::cerr << "Selected literal: " << lit->toString() << std::endl;
         std::cerr << "\tFunctor: " << lit->functor() << std::endl;
@@ -85,6 +87,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // NOTE:
     // This is easy here, since we just need to compare the outermost predicate symbol.
     // The question is how we can properly generalize this matching for other theory rules.
+    // TODO: Check how the instance check of LiteralIndex->getInstances() works. We can probably reuse that.
     auto it3 = getFilteredIterator(it2, [](Literal* lit) -> bool {
         return lit->isPositive()
             && (lit->functor() == pred_int_less);
@@ -93,11 +96,12 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
     // it3: selected literals of premise of the form "t1 < t2"
     // it4 looks for matches "t2 < t3"
-    auto it4 = getMappingIteratorKnownRes<VirtualIterator<std::pair<Literal*,TermQueryResult>>>(it3, [this](Literal* lit) {
+    auto it4 = getMappingIteratorKnownRes<VirtualIterator<std::pair<Literal*,SLQueryResult>>>(it3, [this](Literal* lit) {
         // Here: lit = $less(t1, t2).
         // Goal: match against $less(t3, t4) such that there is a unification of t2 and t3.
-        TermList* t2 = lit->nthArgument(1);
+        TermList const t2 = *lit->nthArgument(1);
 
+        /*
         auto printQueryResults = [](VirtualIterator<TermQueryResult> it) -> void {
             while (it.hasNext()) {
                 auto unif = it.next();
@@ -110,26 +114,62 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
             }
         };
 
-        std::cerr << "\tSuperpositionSubtermIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
-        printQueryResults(_supSubtermIndex->getUnifications(*t2));
+        std::cerr << "\tSuperpositionSubtermIndex::getUnifications(...) for term: " << t2.toString() << std::endl;
+        printQueryResults(_supSubtermIndex->getUnifications(t2));
 
-        std::cerr << "\tSuperpositionLHSIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
-        printQueryResults(_supLHSIndex->getUnifications(*t2));
+        std::cerr << "\tSuperpositionLHSIndex::getUnifications(...) for term: " << t2.toString() << std::endl;
+        printQueryResults(_supLHSIndex->getUnifications(t2));
 
-        std::cerr << "\tDemodulationSubtermIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
-        printQueryResults(_demSubtermIndex->getUnifications(*t2));
+        std::cerr << "\tDemodulationSubtermIndex::getUnifications(...) for term: " << t2.toString() << std::endl;
+        printQueryResults(_demSubtermIndex->getUnifications(t2));
 
-        // std::cerr << "\tDemodulationLHSIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
-        // printQueryResults(_demLHSIndex->getUnifications(*t2));
+        std::cerr << "\tDemodulationLHSIndex::getUnifications(...) for term: " << t2->toString() << std::endl;
+        printQueryResults(_demLHSIndex->getUnifications(*t2));
+        */
 
-        // TODO
-        // This isn't quite right.
-        // We only want to match the LHS of the other term, but as it is now it will also match the right-hand side.
-        // (we probably need a different index type, or add some constraints; something we want to do eventually anyways for more efficient matching)
+        // Find a variable that does not appear in t2
+        std::cerr << "\tFormulaVarIterator on " << t2.toString() << ": [";
+        FormulaVarIterator fvi(&t2);
+        int maxVar = -1;
+        while (fvi.hasNext()) {
+            auto fv = fvi.next();
+            std::cerr << " " << fv;
+            if (fv > maxVar) {
+                maxVar = fv;
+            }
+        }
+        std::cerr << " ]" << std::endl;
+        TermList x(maxVar + 1, false);
+        ASS(!t2.containsSubterm(x));
+        Literal* lQuery = Literal::create2(pred_int_less, true, t2, x);
 
+        std::cerr << "\tGeneratingLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
+        auto resultIt = _glIndex->getUnifications(lQuery, false, true);
+        while (resultIt.hasNext()) {
+            auto unif = resultIt.next();
+            std::cerr << "\t\tSLQueryResult:" << std::endl;
+            std::cerr << "\t\t\tClause: " << unif.clause->toString() << std::endl;
+            std::cerr << "\t\t\tLiteral: " << unif.literal->toString() << std::endl;
+        }
+
+
+        auto unifIt1 = _glIndex->getUnifications(lQuery, false, true);
+
+        auto unifIt2 = getSideEffectIterator(unifIt1, [](ELEMENT_TYPE(decltype(unifIt1)) unif) {
+            std::cerr << "\t\tSLQueryResult:" << std::endl;
+            std::cerr << "\t\t\tClause: " << unif.clause->toString() << std::endl;
+            std::cerr << "\t\t\tLiteral: " << unif.literal->toString() << std::endl;
+        });
+
+        // Annotate each result with the currently selected literal
+        auto unifIt3 = pushPairIntoRightIterator(lit, unifIt2);
+
+        return pvi(unifIt3);
+
+        /*
         // All unifications with t2
         // TODO: use ResolutionIndex (since superposition uses equality which is commutative)
-        auto unifIt1 = _supSubtermIndex->getUnifications(*t2);
+        auto unifIt1 = _supSubtermIndex->getUnifications(t2);
 
         // Filter to positive literals of form "t < u"
         auto unifIt2 = getFilteredIterator(unifIt1, [](TermQueryResult unif) -> bool {
@@ -147,12 +187,14 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         });
 
         return pvi(unifIt4);
+        */
     });
 
-    // Use a VirtualIterator here because only the specialization for VirtualIterator<VirtualIterator<T>> is lazy
+    // Use a VirtualIterator here because only the specialization of getFlattenedIterator for VirtualIterator<VirtualIterator<T>> is lazy enough
+    // (without "pvi" we get output from the getSideEffectIterator() at this point, even if we do not use the result!)
     auto it5 = getFlattenedIterator(pvi(it4));
 
-    auto it6 = getMappingIteratorKnownRes<Clause*>(it5, [premise](std::pair<Literal*,TermQueryResult> arg) {
+    auto it6 = getMappingIteratorKnownRes<Clause*>(it5, [premise](std::pair<Literal*,SLQueryResult> arg) {
         Clause* cl1 = premise;
         Literal* lit1 = arg.first;            // a < b
 
@@ -203,15 +245,8 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
     auto finalIt = it6;
     auto printIt = getSideEffectIterator(finalIt, [](ELEMENT_TYPE(decltype(finalIt)) x) -> void {
-        std::cerr << "ITERATOR ELEMENT: " << x->toString() << std::endl;
-        // std::cerr << "ITERATOR ELEMENT: " << x.first->toString() << " / " << x.second.literal->toString() << std::endl;
+        std::cerr << "GENERATE: " << x->toString() << std::endl;
     });
-
-    // // Just for debugging
-    // while (printIt.hasNext()) {
-    //     printIt.next();
-    // }
-    // std::cerr << std::endl;
 
     // TODO: why do we get output if we never use the iterator?
     // => FlattenedIterator is not lazy enough, unless it operates on VirtualIterator<VirtualIterator<T>>!

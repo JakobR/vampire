@@ -2,6 +2,7 @@
 #define THEORYRULEATTEMPT_HPP
 
 #include "InferenceEngine.hpp"
+#include "Indexing/LiteralIndex.hpp"
 #include "Indexing/TermIndex.hpp"
 
 namespace Inferences {
@@ -49,6 +50,7 @@ class TransitivityRuleExperiment
         SuperpositionLHSIndex* _supLHSIndex;
         DemodulationSubtermIndex* _demSubtermIndex;
         DemodulationLHSIndex* _demLHSIndex;
+        GeneratingLiteralIndex* _glIndex;
 };
 
 
