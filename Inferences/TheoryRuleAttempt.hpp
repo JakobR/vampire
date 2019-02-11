@@ -39,10 +39,10 @@ class TransitivityRuleExperiment
         CLASS_NAME(TransitivityRuleExperiment);
         USE_ALLOCATOR(TransitivityRuleExperiment);
 
-        void attach(SaturationAlgorithm* salg);
-        void detach();
+        void attach(SaturationAlgorithm* salg) override;
+        void detach() override;
 
-        ClauseIterator generateClauses(Clause* premise);
+        ClauseIterator generateClauses(Clause* premise) override;
 
 
     private:
@@ -87,6 +87,28 @@ class TransitivityRuleExperiment
  * For a first version, just add the penalty to TheoryAxioms.cpp
  * Also output penalty so we can use it for proof visualization.
  */
+
+class IrreflexivityISE
+: public ImmediateSimplificationEngine
+{
+    public:
+        CLASS_NAME(IrreflexivityISE);
+        USE_ALLOCATOR(IrreflexivityISE);
+
+        Clause* simplify(Clause* c) override;
+};
+
+class IrreflexivityFSE
+: public ForwardSimplificationEngine
+{
+    public:
+        CLASS_NAME(IrreflexivityFSE);
+        USE_ALLOCATOR(IrreflexivityFSE);
+
+        bool perform(Clause* cl, Clause*& replacement, ClauseIterator& premises) override;
+};
+
+
 
 }
 

@@ -323,6 +323,7 @@ public:
     // We also might have to make name() virtual so we can override it in the subclass,
     // and add some default value like "<unspecified theory inference rule>" to ruleName().
     THEORY_INFERENCE_RULE_TRANSITIVITY,
+    THEORY_INFERENCE_RULE_IRREFLEXIVITY,
   }; // class Inference::Rule
 
   explicit Inference(Rule r);

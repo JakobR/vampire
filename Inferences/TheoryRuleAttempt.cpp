@@ -286,3 +286,90 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // return ClauseIterator::getEmpty();  // NOTE: uncommenting this disables the transitivity rule
     return pvi(printIt);
 }
+
+
+Clause* IrreflexivityISE::simplify(Clause* c)
+{
+    CALL("IrreflexivityISE::simplify");
+
+    std::cerr << "IrreflexivityISE::simplify on " << c->toString() << std::endl;
+
+    static unsigned const pred_int_less = env.signature->getInterpretingSymbol(Theory::INT_LESS);
+    // std::vector<int> skip;   // TODO: should probably use vampire's own types instead of std::vector? (because of custom allocator)
+    Stack<int> skip;
+
+    for (int i = 0; i < c->length(); ++i) {
+        Literal const* lit = c->literals()[i];
+
+        if (lit->isPositive()
+            && lit->functor() == pred_int_less
+            && *lit->nthArgument(0) == *lit->nthArgument(1)) {
+
+            skip.push(i);
+        }
+    }
+
+    std::cerr << "\tSkip literals with indices: [ ";
+    for (int k : skip) {
+        std::cerr << k << ' ';
+    }
+    std::cerr << "]" << std::endl;
+
+    if (skip.size() > 0) {
+        int newLen = c->length() - skip.size();
+        Inference* inf = new Inference1(Inference::THEORY_INFERENCE_RULE_IRREFLEXIVITY, c);
+        Clause* res = new(newLen) Clause(newLen, c->inputType(), inf);
+
+        /*
+        // TODO: wrong! we need to count downwards, because skip.back() contains the highest index to skip. (but the alternative solution in the next paragraph is probably better anyways)
+        for (int i = 0, j = 0; j < newLen; ++i, ++j) {
+            while (!skip.empty() && skip.back() == i) {
+                skip.pop_back();
+                ++i;
+            }
+            res[j] = c[i];
+        }
+        */
+
+        int i = 0;
+        int j = 0;
+        skip.push(c->length());  // the following loop copies literals before every skipped index. We add c->length() to make it also copy the final part.
+        for (int k : skip) {
+            int n = k - i;
+            // std::cerr << i << ' ' << j << ' ' << k << ' ' << n << std::endl;
+            std::memcpy(res->literals() + j, c->literals() + i, n * sizeof(Literal*));
+            j += n;
+            i += n + 1;
+        }
+        // std::cerr << i << ' ' << j << std::endl;
+        ASS_EQ(j, newLen);
+        ASS_EQ(i, c->length() + 1);
+
+        std:: cerr << "\tres = " << res->toString() << std::endl;
+        return res;
+    }
+    else {
+        return c;
+    }
+}
+
+
+bool IrreflexivityFSE::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
+{
+    CALL("IrreflexivityFSE::perform");
+
+    std::cerr << "IrreflexivityFSE::perform on " << cl->toString() << std::endl;
+
+    // just reuse the other function for now (should be extracted into a top-level function later)
+    IrreflexivityISE ise;
+
+    Clause* res = ise.simplify(cl);
+    if (res == cl) {
+        replacement = res;
+        premises = ClauseIterator::getEmpty();  // ???
+        return true;
+    } else {
+        replacement = nullptr;
+        return false;
+    }
+}

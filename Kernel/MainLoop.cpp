@@ -34,6 +34,7 @@
 #include "Inferences/TermAlgebraReasoning.hpp"
 #include "Inferences/TautologyDeletionISE.hpp"
 #include "Inferences/EquationalTautologyRemoval.hpp"
+#include "Inferences/TheoryRuleAttempt.hpp"
 
 #include "InstGen/IGAlgorithm.hpp"
 
@@ -155,6 +156,8 @@ ImmediateSimplificationEngine* MainLoop::createISE(Problem& prb, const Options& 
   }
   res->addFront(new TautologyDeletionISE());
   res->addFront(new DuplicateLiteralRemovalISE());
+
+  res->addFront(new IrreflexivityISE());
 
   return res;
 }

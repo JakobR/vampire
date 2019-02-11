@@ -475,6 +475,8 @@ vstring Inference::ruleName(Rule rule)
     return "inductive strengthening";
   case THEORY_INFERENCE_RULE_TRANSITIVITY:
     return "transitivity rule";
+  case THEORY_INFERENCE_RULE_IRREFLEXIVITY:
+    return "irreflexivity rule";
   default:
     ASSERTION_VIOLATION;
     return "!UNKNOWN INFERENCE RULE!";
