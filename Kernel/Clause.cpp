@@ -79,6 +79,7 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
     _age(0),
     _weight(0),
     _penalty(0),
+    _numInferences(0),
     _store(NONE),
     _in_active(0),
     _refCnt(0),
@@ -120,12 +121,17 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
   // To distinguish between generating and simplifying inferences, we can move this code to the SaturationAlgorithm, where InferenceEngine::generateClauses() etc. is called.
   // However, the correct place would be the inference engine itself (where the clause is being built).
   _penalty = 1;  // basic inferences incur a penalty of 1; TODO: maybe simplifications should only get a penalty of 0.
+  _numInferences = 1;
   // TODO: maybe extract the following into a function computeParentPenalty(); and another function like setPenalty() that automatically adds the parent penalty (so we only have to add the *additional* value when creating a new clause)
   auto parentIt = inf->iterator();
   while (inf->hasNext(parentIt)) {
       Unit* parent = inf->next(parentIt);
       if (parent->isClause()) {
-          _penalty += static_cast<Clause*>(parent)->penalty();
+          Clause* parentClause = static_cast<Clause*>(parent);
+          // NOTE: for now, penalty and inference tree size are computed exactly the same way,
+          // since the only way penalty is introduced is from parent clauses.
+          _penalty += parentClause->penalty();
+          _numInferences += parentClause->numInferences();
       }
   }
 
@@ -458,7 +464,14 @@ vstring Clause::toString() const
   result += ") ";
 
   if (penalty() > 0) {
-      result += "P(" + Int::toString(penalty()) + ") ";
+      result += "\n\tP(" + Int::toString(penalty()) + ") ";
+  }
+  if (numInferences() > 0) {
+      result += "N(" + Int::toString(numInferences()) + ") ";
+  }
+  if (penalty() > 0 && numInferences() > 0) {
+      float pn = ((float)penalty()) / numInferences();
+      result += "P/N(" + std::to_string(pn) + ") ";
   }
 
   if(isTheoryDescendant()){
@@ -545,7 +558,8 @@ void Clause::computeWeight() const
     _weight+=splitWeight(); // no longer includes propWeight
   }
 
-  _weight += _penalty;
+  // TODO: disabled for now
+  // _weight += _penalty;
 
   // If _weight is zero (empty clause) then no need to do this
   if(_weight){

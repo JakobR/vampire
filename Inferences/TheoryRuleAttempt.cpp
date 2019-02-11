@@ -125,6 +125,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         // It probably does not make sense to create a new substitution tree just for matching here.
         // We could either use lambdas with ad-hoc checks as here, or implement our own function for instance checking.
 
+        // isInstance(template, lit);
         return lit->isPositive()
             && (lit->functor() == pred_int_less);
     });
@@ -176,6 +177,8 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
         std::cerr << " ]" << std::endl;
 
         // Create "template" literal for matching
+        // t1 < t2
+        // t2 < x
         TermList x(maxVar + 1, false);
         ASS(!t2.containsSubterm(x));
         Literal* lQuery = Literal::create2(pred_int_less, true, t2, x);  // TODO: is this shared or not? and what exactly does that mean?
@@ -190,8 +193,6 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
                 std::cerr << "\t\t\tLiteral: " << unif.literal->toString() << std::endl;
             }
         };
-        std::cerr << "\tGeneratingLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
-        printSLQueryResults(_glIndex->getUnifications(lQuery, false, true));
         std::cerr << "\tGeneratingLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
         printSLQueryResults(_glIndex->getUnifications(lQuery, false, true));
         std::cerr << "\tSimplifyingLiteralIndex::getUnifications(...) for literal: " << lQuery->toString() << std::endl;
@@ -291,6 +292,7 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 Clause* IrreflexivityISE::simplify(Clause* c)
 {
     CALL("IrreflexivityISE::simplify");
+    // t < t
 
     std::cerr << "IrreflexivityISE::simplify on " << c->toString() << std::endl;
 

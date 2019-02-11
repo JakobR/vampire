@@ -185,6 +185,10 @@ public:
       _penalty = p;
       _weight = 0;   // need to recompute weight after changing penalty
   }
+  unsigned numInferences() const
+  {
+      return _numInferences;
+  }
 
   /** Return the color of a clause */
   Color color() const
@@ -386,8 +390,12 @@ protected:
   unsigned _age;
   /** weight */
   mutable unsigned _weight;
+
   /** penalty from inferences */
   unsigned _penalty;
+  /** number of inferences used to derive this clause */
+  unsigned _numInferences;
+
   /** storage class */
   Store _store;
   /** in active index **/

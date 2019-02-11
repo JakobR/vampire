@@ -66,6 +66,7 @@ void TheoryAxioms::addAndOutputTheoryUnit(Unit* unit, unsigned level)
   }
   if(unit->isClause()){ 
     static_cast<Clause*>(unit)->setTheoryDescendant(true); 
+    static_cast<Clause*>(unit)->setPenalty(20);  // TODO(JR); just for now, we set penalty 20 because it is the clausal orientation
   } else {
     _prb.reportFormulasAdded();
   }
