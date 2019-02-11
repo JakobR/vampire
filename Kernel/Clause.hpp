@@ -185,9 +185,13 @@ public:
       _penalty = p;
       _weight = 0;   // need to recompute weight after changing penalty
   }
-  unsigned numInferences() const
+  unsigned proofTreeNumClauses() const
   {
-      return _numInferences;
+      return _proofTreeNumClauses;
+  }
+  unsigned proofTreeNumInferences() const
+  {
+      return _proofTreeNumInferences;
   }
 
   /** Return the color of a clause */
@@ -393,8 +397,10 @@ protected:
 
   /** penalty from inferences */
   unsigned _penalty;
-  /** number of inferences used to derive this clause */
-  unsigned _numInferences;
+  /** number of clauses in the proof tree for this clause */
+  unsigned _proofTreeNumClauses;
+  /** number of inferences that appear in the proof tree of this clause */
+  unsigned _proofTreeNumInferences;
 
   /** storage class */
   Store _store;
