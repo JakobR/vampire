@@ -475,7 +475,6 @@ vstring Clause::toString() const
   if(isGoal()){ result += ":G"; }
   result += ") ";
 
-  result += "\n\t";
   result += "P(" + Int::toString(penalty()) + ") ";
   result += "NC(" + Int::toString(proofTreeNumClauses()) + ") ";
   result += "NI(" + Int::toString(proofTreeNumInferences()) + ") ";

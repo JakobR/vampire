@@ -714,7 +714,7 @@ public:
   typedef ELEMENT_TYPE(Inner) T;
   DECL_ELEMENT_TYPE(T);
 
-    // TODO: not lazy enough! why?
+    // TODO(JR): not lazy enough! why?
     // the specialization for VirtualIterator<VirtualIterator<T>> works as expected.
   explicit FlatteningIterator(Master master)
   : _master(master)

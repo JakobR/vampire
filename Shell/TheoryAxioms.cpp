@@ -162,7 +162,7 @@ void TheoryAxioms::addCommutativity(Interpretation op)
  */
 void TheoryAxioms::addAssociativity(Interpretation op)
 {
-  CALL("TheoryAxioms::addCommutativity");
+  CALL("TheoryAxioms::addAssociativity");
   ASS(theory->isFunction(op));
   ASS_EQ(theory->getArity(op),2);
 
@@ -990,7 +990,7 @@ void TheoryAxioms::addBooleanArrayWriteAxioms(unsigned arraySort)
  */
 void TheoryAxioms::apply()
 {
-  CALL("TheoryAxioms::applyProperty");
+  CALL("TheoryAxioms::apply");
   Property* prop = _prb.getProperty();
   bool modified = false;
   bool haveIntPlus =
