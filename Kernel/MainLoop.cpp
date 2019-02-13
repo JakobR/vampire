@@ -157,7 +157,9 @@ ImmediateSimplificationEngine* MainLoop::createISE(Problem& prb, const Options& 
   res->addFront(new TautologyDeletionISE());
   res->addFront(new DuplicateLiteralRemovalISE());
 
-  // res->addFront(new IrreflexivityISE());
+  if (opt.theoryRules()) {
+    res->addFront(new IrreflexivityISE());
+  }
 
   return res;
 }
