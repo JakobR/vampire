@@ -1999,7 +1999,6 @@ public:
   void setIgnoreMissing(IgnoreMissing newVal) { _ignoreMissing.actualValue = newVal; }
   bool increasedNumeralWeight() const { return _increasedNumeralWeight.actualValue; }
   TheoryAxiomLevel theoryAxioms() const { return _theoryAxioms.actualValue; }
-  bool theoryRules() const { return _theoryRules.actualValue; }
   //void setTheoryAxioms(bool newValue) { _theoryAxioms = newValue; }
   bool interpretedSimplification() const { return _interpretedSimplification.actualValue; }
   //void setInterpretedSimplification(bool val) { _interpretedSimplification = val; }
@@ -2103,6 +2102,10 @@ public:
   bool newCNF() const { return _newCNF.actualValue; }
   int getIteInliningThreshold() const { return _iteInliningThreshold.actualValue; }
   bool getIteInlineLet() const { return _inlineLet.actualValue; }
+
+  bool theoryRules() const { return _theoryRules.actualValue; }
+  unsigned penaltyFactor() const { return _penaltyFactor.actualValue; }
+
 private:
     
     /**
@@ -2450,6 +2453,7 @@ private:
 
   // TODO(JR): better name, decide on interaction with _theoryAxioms
   BoolOptionValue _theoryRules;
+  UnsignedOptionValue _penaltyFactor;
 
   /** Time limit in deciseconds */
   TimeLimitOptionValue _timeLimitInDeciseconds;

@@ -91,17 +91,30 @@ Comparison AWPassiveClauseContainer::compareWeight(Clause* cl1, Clause* cl2, con
 
   // TODO consider using Clause::getEffectiveWeight
   // since 22/1/15 weight now includes splitWeight
-  unsigned cl1Weight=cl1->weight();
-  unsigned cl2Weight=cl2->weight();
+
+  unsigned cl1Weight = cl1->getWeightWithPenalty();
+  unsigned cl2Weight = cl2->getWeightWithPenalty();
+  // static unsigned const pf = opt.penaltyFactor();
+  // unsigned cl1Weight = cl1->weight() + (pf * cl1->penalty()) / cl1->proofTreeNumClauses() - pf;
+  // unsigned cl2Weight = cl2->weight() + (pf * cl2->penalty()) / cl2->proofTreeNumClauses() - pf;
+  // unsigned cl1Weight = cl1->weight() + static_cast<unsigned>(pf * static_cast<double>(cl1->penalty()) / cl1->proofTreeNumClauses());
+  // unsigned cl2Weight = cl2->weight() + static_cast<unsigned>(pf * static_cast<double>(cl2->penalty()) / cl2->proofTreeNumClauses());
+
+  // std::cerr << "w1 = " << cl1->weight();
+  // std::cerr << " / w1' = " << cl1Weight;
+  // std::cerr << " / p = " << cl1->penalty();
+  // std::cerr << " / nc = " << cl1->proofTreeNumClauses();
+  // // std::cerr << " / w1'' = " << cl1Weight2;
+  // std::cerr << std::endl;
 
   if (opt.increasedNumeralWeight()) {
     cl1Weight=cl1Weight*2+cl1->getNumeralWeight();
     cl2Weight=cl2Weight*2+cl2->getNumeralWeight();
   }
 
-  static int nwcNumer = opt.nonGoalWeightCoeffitientNumerator();
-  static int nwcDenom = opt.nonGoalWeightCoeffitientDenominator();
-  static bool restrictNWC = opt.restrictNWCtoGC();
+  static int const nwcNumer = opt.nonGoalWeightCoeffitientNumerator();
+  static int const nwcDenom = opt.nonGoalWeightCoeffitientDenominator();
+  static bool const restrictNWC = opt.restrictNWCtoGC();
 
   bool cl1_goal = cl1->isGoal();
   bool cl2_goal = cl2->isGoal();
@@ -283,9 +296,21 @@ Clause* AWPassiveClauseContainer::popSelected()
 
   if (byWeight) {
     _balance -= _ageRatio;
+    unsigned minWeight = std::numeric_limits<decltype(minWeight)>::max();
+    unsigned maxWeight = std::numeric_limits<decltype(maxWeight)>::min();
+    auto it = iterator();
+    while (it.hasNext()) {
+        Clause* c = it.next();
+        minWeight = std::min(minWeight, c->getWeightWithPenalty());
+        maxWeight = std::max(maxWeight, c->getWeightWithPenalty());
+    }
     Clause* cl = _weightQueue.pop();
     _ageQueue.remove(cl);
     selectedEvent.fire(cl);
+    std::cerr << "popSelected by Weight: WP(" << cl->getWeightWithPenalty() << ")\t";
+    std::cerr << "WeightQueue has weights in range: " << minWeight << " .. " << maxWeight;
+    std::cerr << "  (overflow at " << std::numeric_limits<unsigned>::max() << ")";
+    std::cerr << std::endl;
     return cl;
   }
   _balance += _weightRatio;

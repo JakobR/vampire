@@ -176,6 +176,8 @@ public:
   }
   void computeWeight() const;
 
+  unsigned getWeightWithPenalty() const;
+
   unsigned penalty() const
   {
       return _penalty;

@@ -463,6 +463,7 @@ vstring Clause::toString() const
     result += " C" + Int::toString(color()) + " ";
   }
 
+  // result += "\t\t";
   result += vstring(" (") + Int::toString(_age) + ':' + Int::toString(weight());
   float ew = const_cast<Clause*>(this)->getEffectiveWeight(const_cast<Shell::Options&>(*(env.options)));
   unsigned effective = static_cast<int>(ceil(ew));
@@ -479,13 +480,14 @@ vstring Clause::toString() const
   result += "NC(" + Int::toString(proofTreeNumClauses()) + ") ";
   result += "NI(" + Int::toString(proofTreeNumInferences()) + ") ";
   if (proofTreeNumClauses() > 0) {
-      float r = ((float)penalty()) / proofTreeNumClauses();
+      float r = static_cast<float>(penalty()) / proofTreeNumClauses();
       result += "P/NC(" + std::to_string(r) + ") ";
   }
   if (proofTreeNumInferences() > 0) {
-      float r = ((float)penalty()) / proofTreeNumInferences();
+      float r = static_cast<float>(penalty()) / proofTreeNumInferences();
       result += "P/NI(" + std::to_string(r) + ") ";
   }
+  result += "WP(" + Int::toString(getWeightWithPenalty()) + ") ";
 
   if(isTheoryDescendant()){
     result += "T ";
@@ -683,6 +685,20 @@ float Clause::getEffectiveWeight(const Options& opt)
   else {
     return w * ( !goal ? nongoalWeightCoef : 1.0f);
   }
+}
+
+unsigned Clause::getWeightWithPenalty() const
+{
+  unsigned const pf = env.options->penaltyFactor();
+  // P/NC is in range 1..20
+  // We normalize the range to starting point 0.
+  //
+  // Formula:
+  //   w + pf * (P/NC - 1)
+  //
+  // Rearranging so we don't need double:
+  //   w + ((pf * P) / NC) - pf
+  return weight() + (pf * penalty()) / proofTreeNumClauses() - pf;
 }
 
 void Clause::collectVars(DHSet<unsigned>& acc)

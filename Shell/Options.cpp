@@ -507,6 +507,12 @@ void Options::Options::init()
     _lookup.insert(&_theoryRules);
     _theoryRules.tag(OptionTag::INFERENCES);
 
+    _penaltyFactor = UnsignedOptionValue("penalty_factor", "pf", 0);
+    _penaltyFactor.description="Penalty is weighted with this factor during clause selection";  // TODO(JR)
+    _lookup.insert(&_penaltyFactor);
+    _penaltyFactor.tag(OptionTag::INFERENCES);
+    _penaltyFactor.setRandomChoices({"1","2","5"});
+
     _theoryFlattening = BoolOptionValue("theory_flattening","thf",false);
     _theoryFlattening.description = "Flatten clauses to separate theory and non-theory parts";
     _lookup.insert(&_theoryFlattening);
