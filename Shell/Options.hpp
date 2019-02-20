@@ -2105,6 +2105,10 @@ public:
 
   bool theoryRules() const { return _theoryRules.actualValue; }
   unsigned penaltyFactor() const { return _penaltyFactor.actualValue; }
+  unsigned penaltyPerExpensiveTheoryAxiom() const { return _penaltyPerExpensiveTheoryAxiom.actualValue; }
+  unsigned penaltyPerCheapTheoryAxiom() const { return _penaltyPerCheapTheoryAxiom.actualValue; }
+  unsigned penaltyPerRegularAxiom() const { return _penaltyPerRegularAxiom.actualValue; }
+  unsigned penaltyPerInference() const { return _penaltyPerInference.actualValue; }
 
 private:
     
@@ -2454,6 +2458,10 @@ private:
   // TODO(JR): better name, decide on interaction with _theoryAxioms
   BoolOptionValue _theoryRules;
   UnsignedOptionValue _penaltyFactor;
+  UnsignedOptionValue _penaltyPerExpensiveTheoryAxiom;
+  UnsignedOptionValue _penaltyPerCheapTheoryAxiom;
+  UnsignedOptionValue _penaltyPerRegularAxiom;
+  UnsignedOptionValue _penaltyPerInference;
 
   /** Time limit in deciseconds */
   TimeLimitOptionValue _timeLimitInDeciseconds;

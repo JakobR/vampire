@@ -502,16 +502,40 @@ void Options::Options::init()
     _lookup.insert(&_theoryAxioms);
     _theoryAxioms.tag(OptionTag::PREPROCESSING);
 
+
+
     _theoryRules = BoolOptionValue("theory_rules","thr",false);
-    _theoryRules.description="Enable theory inference rules";  // TODO(JR)
+    _theoryRules.description = "Enable theory inference rules";  // TODO(JR)
     _lookup.insert(&_theoryRules);
     _theoryRules.tag(OptionTag::INFERENCES);
 
     _penaltyFactor = UnsignedOptionValue("penalty_factor", "pf", 0);
-    _penaltyFactor.description="Penalty is weighted with this factor during clause selection";  // TODO(JR)
+    _penaltyFactor.description = "Penalty is weighted with this factor during clause selection";  // TODO(JR)
     _lookup.insert(&_penaltyFactor);
     _penaltyFactor.tag(OptionTag::INFERENCES);
     _penaltyFactor.setRandomChoices({"1","2","5"});
+
+    _penaltyPerExpensiveTheoryAxiom = UnsignedOptionValue("penalty_per_expensive_theory_axiom", "ppeta", 20);
+    _penaltyPerExpensiveTheoryAxiom.description = "TODO";
+    _lookup.insert(&_penaltyPerExpensiveTheoryAxiom);
+    _penaltyPerExpensiveTheoryAxiom.tag(OptionTag::INFERENCES);
+
+    _penaltyPerCheapTheoryAxiom = UnsignedOptionValue("penalty_per_cheap_theory_axiom", "ppcta", 20);
+    _penaltyPerCheapTheoryAxiom.description = "TODO";
+    _lookup.insert(&_penaltyPerCheapTheoryAxiom);
+    _penaltyPerCheapTheoryAxiom.tag(OptionTag::INFERENCES);
+
+    _penaltyPerRegularAxiom = UnsignedOptionValue("penalty_per_regular_axiom", "ppra", 1);
+    _penaltyPerRegularAxiom.description = "TODO";
+    _lookup.insert(&_penaltyPerRegularAxiom);
+    _penaltyPerRegularAxiom.tag(OptionTag::INFERENCES);
+
+    _penaltyPerInference = UnsignedOptionValue("penalty_per_inference", "ppi", 1);
+    _penaltyPerInference.description = "TODO";
+    _lookup.insert(&_penaltyPerInference);
+    _penaltyPerInference.tag(OptionTag::INFERENCES);
+
+
 
     _theoryFlattening = BoolOptionValue("theory_flattening","thf",false);
     _theoryFlattening.description = "Flatten clauses to separate theory and non-theory parts";

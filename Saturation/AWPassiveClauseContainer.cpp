@@ -92,8 +92,12 @@ Comparison AWPassiveClauseContainer::compareWeight(Clause* cl1, Clause* cl2, con
   // TODO consider using Clause::getEffectiveWeight
   // since 22/1/15 weight now includes splitWeight
 
+  // unsigned cl1Weight = cl1->weight();
+  // unsigned cl2Weight = cl2->weight();
+
   unsigned cl1Weight = cl1->getWeightWithPenalty();
   unsigned cl2Weight = cl2->getWeightWithPenalty();
+
   // static unsigned const pf = opt.penaltyFactor();
   // unsigned cl1Weight = cl1->weight() + (pf * cl1->penalty()) / cl1->proofTreeNumClauses() - pf;
   // unsigned cl2Weight = cl2->weight() + (pf * cl2->penalty()) / cl2->proofTreeNumClauses() - pf;
@@ -298,18 +302,23 @@ Clause* AWPassiveClauseContainer::popSelected()
     _balance -= _ageRatio;
     unsigned minWeight = std::numeric_limits<decltype(minWeight)>::max();
     unsigned maxWeight = std::numeric_limits<decltype(maxWeight)>::min();
+    unsigned minWP = std::numeric_limits<decltype(minWP)>::max();
+    unsigned maxWP = std::numeric_limits<decltype(maxWP)>::min();
     auto it = iterator();
     while (it.hasNext()) {
         Clause* c = it.next();
-        minWeight = std::min(minWeight, c->getWeightWithPenalty());
-        maxWeight = std::max(maxWeight, c->getWeightWithPenalty());
+        minWeight = std::min(minWeight, c->weight());
+        maxWeight = std::max(maxWeight, c->weight());
+        minWP = std::min(minWP, c->getWeightWithPenalty());
+        maxWP = std::max(maxWP, c->getWeightWithPenalty());
     }
     Clause* cl = _weightQueue.pop();
     _ageQueue.remove(cl);
     selectedEvent.fire(cl);
-    std::cerr << "popSelected by Weight: WP(" << cl->getWeightWithPenalty() << ")\t";
-    std::cerr << "WeightQueue has weights in range: " << minWeight << " .. " << maxWeight;
-    std::cerr << "  (overflow at " << std::numeric_limits<unsigned>::max() << ")";
+    std::cerr << "popSelected by Weight: ";
+    std::cerr << "W(" << cl->weight() << ") [ " << minWeight << " .. " << maxWeight << " ] \t ";
+    std::cerr << "WP(" << cl->getWeightWithPenalty() << ") [ " << minWP << " .. " << maxWP << " ] \t ";
+    std::cerr << "(overflow at " << std::numeric_limits<unsigned>::max() << ")";
     std::cerr << std::endl;
     return cl;
   }

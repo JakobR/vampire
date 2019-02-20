@@ -66,7 +66,11 @@ void TheoryAxioms::addAndOutputTheoryUnit(Unit* unit, unsigned level)
   }
   if(unit->isClause()){ 
     static_cast<Clause*>(unit)->setTheoryDescendant(true); 
-    static_cast<Clause*>(unit)->setPenalty(20);  // TODO(JR); just for now, we set penalty 20 because it is the clausal orientation
+    // TODO(JR)
+    // for now, we just add a penalty on the theory axioms
+    // (they correspond to the "clausal orientation" of the inference rule)
+    static_cast<Clause*>(unit)->setPenalty(level == CHEAP ? env.options->penaltyPerCheapTheoryAxiom()
+                                                          : env.options->penaltyPerExpensiveTheoryAxiom());
   } else {
     _prb.reportFormulasAdded();
   }

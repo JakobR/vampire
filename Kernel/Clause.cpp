@@ -121,7 +121,7 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
   // TODO(JR):
   // To distinguish between generating and simplifying inferences, we can move this code to the SaturationAlgorithm, where InferenceEngine::generateClauses() etc. is called.
   // However, the correct place would be the inference engine itself (where the clause is being built).
-  _penalty = 1;  // basic inferences incur a penalty of 1; TODO: maybe simplifications should only get a penalty of 0.
+  _penalty = 0;
 
   _proofTreeNumClauses = 1;
 
@@ -133,18 +133,19 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
   while (inf->hasNext(parentIt)) {
       Unit* parent = inf->next(parentIt);
       if (parent->isClause()) {
+          isInference = true;
           Clause* parentClause = static_cast<Clause*>(parent);
-          // NOTE: for now, penalty and inference tree size are computed exactly the same way,
-          // since the only way penalty is introduced is from parent clauses.
           _penalty += parentClause->penalty();
           _proofTreeNumClauses += parentClause->proofTreeNumClauses();
-          isInference = true;
           parentInferences += parentClause->proofTreeNumInferences();
       }
   }
   if (isInference) {
       // We only want to add one if we have at least one parent clause.
+      _penalty += env.options->penaltyPerInference();
       _proofTreeNumInferences = 1 + parentInferences;
+  } else {
+      _penalty = env.options->penaltyPerRegularAxiom();
   }
 
 //#if VDEBUG
@@ -574,14 +575,24 @@ void Clause::computeWeight() const
   }
 
   // TODO: disabled for now
+  // std::cerr << " _weight = " << _weight << "\t _penalty = " << _penalty << std::endl;
   // _weight += _penalty;
+  // unsigned const pf = env.options->penaltyFactor();
+  // P/NC is in range 1..20
+  // We normalize the range to starting point 0.
+  //
+  // Formula:
+  //   w + pf * (P/NC - 1)
+  //
+  // Rearranging so we don't need double:
+  //   w + ((pf * P) / NC) - pf
+  // _weight += (pf * penalty()) / proofTreeNumClauses() - pf;
 
   // If _weight is zero (empty clause) then no need to do this
   if(_weight){
     unsigned priority = getPriority();
     _weight *= priority;
   }
-
 } // Clause::computeWeight
 
 
