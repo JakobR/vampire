@@ -196,6 +196,20 @@ public:
       return _proofTreeNumInferences;
   }
 
+  enum ActivationReason {
+      AR_NONE = 0,
+      AR_WEIGHT = 1,
+      AR_AGE = 2
+  };
+  ActivationReason activationReason() const
+  {
+      return _activationReason;
+  }
+  void setActivationReason(ActivationReason r)
+  {
+      _activationReason = r;
+  }
+
   /** Return the color of a clause */
   Color color() const
   {
@@ -403,6 +417,8 @@ protected:
   unsigned _proofTreeNumClauses;
   /** number of inferences that appear in the proof tree of this clause */
   unsigned _proofTreeNumInferences;
+
+  ActivationReason _activationReason = AR_NONE;
 
   /** storage class */
   Store _store;

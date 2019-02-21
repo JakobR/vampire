@@ -490,6 +490,22 @@ vstring Clause::toString() const
   }
   result += "WP(" + Int::toString(getWeightWithPenalty()) + ") ";
 
+  if (activationReason() != AR_NONE) {
+      result += "AR(";
+      switch (activationReason()) {
+          case AR_AGE:
+              result += "A";
+              break;
+          case AR_WEIGHT:
+              result += "W";
+              break;
+          default:
+              result += std::to_string(activationReason());
+              break;
+      }
+      result += ") ";
+  }
+
   if(isTheoryDescendant()){
     result += "T ";
   }

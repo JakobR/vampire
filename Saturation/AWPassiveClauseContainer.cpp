@@ -315,18 +315,21 @@ Clause* AWPassiveClauseContainer::popSelected()
     Clause* cl = _weightQueue.pop();
     _ageQueue.remove(cl);
     selectedEvent.fire(cl);
+    cl->setActivationReason(Clause::AR_WEIGHT);
     std::cerr << "popSelected by Weight: ";
     std::cerr << "W(" << cl->weight() << ") [ " << minWeight << " .. " << maxWeight << " ] \t ";
     std::cerr << "WP(" << cl->getWeightWithPenalty() << ") [ " << minWP << " .. " << maxWP << " ] \t ";
     std::cerr << "(overflow at " << std::numeric_limits<unsigned>::max() << ")";
     std::cerr << std::endl;
     return cl;
+  } else {
+      _balance += _weightRatio;
+      Clause* cl = _ageQueue.pop();
+      _weightQueue.remove(cl);
+      selectedEvent.fire(cl);
+      cl->setActivationReason(Clause::AR_AGE);
+      return cl;
   }
-  _balance += _weightRatio;
-  Clause* cl = _ageQueue.pop();
-  _weightQueue.remove(cl);
-  selectedEvent.fire(cl);
-  return cl;
 } // AWPassiveClauseContainer::popSelected
 
 
