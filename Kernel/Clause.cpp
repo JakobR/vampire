@@ -81,6 +81,7 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
     _penalty(0),
     _proofTreeNumClauses(0),
     _proofTreeNumInferences(0),
+    _proofTreeNumReductions(0),
     _store(NONE),
     _in_active(0),
     _refCnt(0),
@@ -128,25 +129,29 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
   // TODO: maybe extract the following into a function computeParentPenalty(); and another function like setPenalty() that automatically adds the parent penalty
   // (so we only have to add the *additional* value when creating a new clause)
   auto parentIt = inf->iterator();
-  bool isInference = false;
+  unsigned numPremises = 0;
   unsigned parentInferences = 0;
   while (inf->hasNext(parentIt)) {
       Unit* parent = inf->next(parentIt);
       if (parent->isClause()) {
-          isInference = true;
+          numPremises += 1;
           Clause* parentClause = static_cast<Clause*>(parent);
           _penalty += parentClause->penalty();
           _proofTreeNumClauses += parentClause->proofTreeNumClauses();
           parentInferences += parentClause->proofTreeNumInferences();
+          // _proofTreeNumInferences2 += parentClause->proofTreeNumInferences2();
       }
   }
-  if (isInference) {
+  if (numPremises >= 1) {
       // We only want to add one if we have at least one parent clause.
       _penalty += env.options->penaltyPerInference();
       _proofTreeNumInferences = 1 + parentInferences;
   } else {
       _penalty = env.options->penaltyPerRegularAxiom();
   }
+  // if (numPremises >= 2) {
+  //     _proofTreeNumInferences2 += 1;
+  // }
 
 //#if VDEBUG
 _freeze_count=0;
@@ -480,6 +485,7 @@ vstring Clause::toString() const
   result += "P(" + Int::toString(penalty()) + ") ";
   result += "NC(" + Int::toString(proofTreeNumClauses()) + ") ";
   result += "NI(" + Int::toString(proofTreeNumInferences()) + ") ";
+  result += "NR(" + Int::toString(proofTreeNumReductions()) + ") ";
   if (proofTreeNumClauses() > 0) {
       float r = static_cast<float>(penalty()) / proofTreeNumClauses();
       result += "P/NC(" + std::to_string(r) + ") ";
@@ -725,7 +731,15 @@ unsigned Clause::getWeightWithPenalty() const
   //
   // Rearranging so we don't need double:
   //   w + ((pf * P) / NC) - pf
-  return weight() + (pf * penalty()) / proofTreeNumClauses() - pf;
+  // return weight() + (pf * penalty()) / proofTreeNumClauses() - pf;
+
+  // Actually, adding a constant should not matter (since we use this value only for comparisons).
+  // To avoid overflow we don't normalize (may happen if penalty is changed with options... then the penalty is not guaranteed to be >= 1 any more).
+  //   w + ((pf * P) / NC)
+  return weight() + (pf * penalty()) / proofTreeNumClauses();
+
+  // w + pf * P / 100
+  // return weight() + pf * penalty() / 100;
 }
 
 void Clause::collectVars(DHSet<unsigned>& acc)

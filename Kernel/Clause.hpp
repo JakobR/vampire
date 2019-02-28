@@ -191,9 +191,21 @@ public:
   {
       return _proofTreeNumClauses;
   }
+  void setProofTreeNumClauses(unsigned x)
+  {
+      _proofTreeNumClauses = x;
+  }
   unsigned proofTreeNumInferences() const
   {
       return _proofTreeNumInferences;
+  }
+  unsigned proofTreeNumReductions() const
+  {
+      return _proofTreeNumReductions;
+  }
+  void setProofTreeNumReductions(unsigned x)
+  {
+      _proofTreeNumReductions = x;
   }
 
   enum ActivationReason {
@@ -417,6 +429,7 @@ protected:
   unsigned _proofTreeNumClauses;
   /** number of inferences that appear in the proof tree of this clause */
   unsigned _proofTreeNumInferences;
+  unsigned _proofTreeNumReductions;  // clause reductions (simplifications)
 
   ActivationReason _activationReason = AR_NONE;
 

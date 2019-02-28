@@ -2109,6 +2109,7 @@ public:
   unsigned penaltyPerCheapTheoryAxiom() const { return _penaltyPerCheapTheoryAxiom.actualValue; }
   unsigned penaltyPerRegularAxiom() const { return _penaltyPerRegularAxiom.actualValue; }
   unsigned penaltyPerInference() const { return _penaltyPerInference.actualValue; }
+  unsigned penaltyPerSimplifyingInference() const { return _penaltyPerSimplifyingInference.actualValue; }
 
 private:
     
@@ -2462,6 +2463,7 @@ private:
   UnsignedOptionValue _penaltyPerCheapTheoryAxiom;
   UnsignedOptionValue _penaltyPerRegularAxiom;
   UnsignedOptionValue _penaltyPerInference;
+  UnsignedOptionValue _penaltyPerSimplifyingInference;
 
   /** Time limit in deciseconds */
   TimeLimitOptionValue _timeLimitInDeciseconds;

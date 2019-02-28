@@ -535,6 +535,11 @@ void Options::Options::init()
     _lookup.insert(&_penaltyPerInference);
     _penaltyPerInference.tag(OptionTag::INFERENCES);
 
+    _penaltyPerSimplifyingInference = UnsignedOptionValue("penalty_per_simplifying_inference", "ppsi", 1);
+    _penaltyPerSimplifyingInference.description = "TODO";
+    _lookup.insert(&_penaltyPerSimplifyingInference);
+    _penaltyPerSimplifyingInference.tag(OptionTag::INFERENCES);
+
 
 
     _theoryFlattening = BoolOptionValue("theory_flattening","thf",false);
