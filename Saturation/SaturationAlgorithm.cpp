@@ -473,7 +473,7 @@ void SaturationAlgorithm::onClauseReduction(Clause* cl, Clause* replacement,
   }
 
   if (replacement) {
-    replacement->setPenalty(cl->penalty() + env.options->penaltyPerSimplifyingInference());
+    // replacement->setPenalty(cl->penalty() + env.options->penaltyPerSimplifyingInference());
     replacement->setProofTreeNumReductions(cl->proofTreeNumReductions() + 1);
     replacement->setProofTreeNumClauses(cl->proofTreeNumClauses() + 1);
 

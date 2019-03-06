@@ -23,6 +23,7 @@
  * @since 18/05/2007 Manchester
  */
 
+#include <cmath>
 #include <ostream>
 
 #include "Debug/RuntimeStatistics.hpp"
@@ -140,6 +141,7 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
           _proofTreeNumClauses += parentClause->proofTreeNumClauses();
           parentInferences += parentClause->proofTreeNumInferences();
           // _proofTreeNumInferences2 += parentClause->proofTreeNumInferences2();
+          _proofTreeNumReductions += parentClause->proofTreeNumReductions();
       }
   }
   if (numPremises >= 1) {
@@ -486,6 +488,13 @@ vstring Clause::toString() const
   result += "NC(" + Int::toString(proofTreeNumClauses()) + ") ";
   result += "NI(" + Int::toString(proofTreeNumInferences()) + ") ";
   result += "NR(" + Int::toString(proofTreeNumReductions()) + ") ";
+
+  double p = penalty();
+  double nc = proofTreeNumClauses();
+  double g = std::log10(nc) + 1;
+  double f = 1 + (g * p / (nc - p + 1));
+  result += "F(" + std::to_string(f) + ") ";
+
   if (proofTreeNumClauses() > 0) {
       float r = static_cast<float>(penalty()) / proofTreeNumClauses();
       result += "P/NC(" + std::to_string(r) + ") ";
@@ -656,7 +665,8 @@ unsigned Clause::getNumeralWeight()
       }
       IntegerConstantType intVal;
       if (theory->tryInterpretConstant(t,intVal)) {
-	int w = BitUtils::log2(abs(intVal.toInner()))-1;
+	// int w = BitUtils::log2(abs(intVal.toInner()))-1;
+	int w = abs(intVal.toInner()) - 1;
 	if (w > 0) {
 	  res += w;
 	}
@@ -713,7 +723,8 @@ float Clause::getEffectiveWeight(const Options& opt)
 
   unsigned w=weight();
   if (opt.increasedNumeralWeight()) {
-    return (2*w+getNumeralWeight()) * ( !goal ? nongoalWeightCoef : 1.0f);
+    // return (2*w+getNumeralWeight()) * ( !goal ? nongoalWeightCoef : 1.0f);
+    return w+getNumeralWeight();
   }
   else {
     return w * ( !goal ? nongoalWeightCoef : 1.0f);
@@ -736,10 +747,28 @@ unsigned Clause::getWeightWithPenalty() const
   // Actually, adding a constant should not matter (since we use this value only for comparisons).
   // To avoid overflow we don't normalize (may happen if penalty is changed with options... then the penalty is not guaranteed to be >= 1 any more).
   //   w + ((pf * P) / NC)
-  return weight() + (pf * penalty()) / proofTreeNumClauses();
+  // return weight() + (pf * penalty()) / proofTreeNumClauses();
+
+  // ASS(weight() * penalty() < (std::numeric_limits<unsigned>::max() / 1000));
+  // double p = penalty();
+  // double nc = proofTreeNumClauses();
+  // return static_cast<unsigned>(1000 * weight() * (1 + p / (nc - p + 1)));
+
+
+  double p = penalty();
+  double nc = proofTreeNumClauses();
+  double g = std::log10(nc) + 1;
+  double f = 1 + (g * p / (nc - p + 1));
+
+  unsigned w=weight();
+  if (env.options->increasedNumeralWeight()) {
+    w += const_cast<Clause*>(this)->getNumeralWeight();
+  }
+  return static_cast<unsigned>(1000 * w * f);
+
 
   // w + pf * P / 100
-  // return weight() + pf * penalty() / 100;
+  // return weight() + (pf * penalty()) / 100;
 }
 
 void Clause::collectVars(DHSet<unsigned>& acc)
