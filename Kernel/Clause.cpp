@@ -652,19 +652,6 @@ unsigned Clause::getNumeralWeight() const
 {
     CALL("Clause::getNumeralWeight");
 
-    // static bool const scaleLinearly =
-    //     env.options->increasedNumeralWeight() == Options::IncreasedNumeralWeight::LINEAR;
-
-    // static auto const scale = [] (int x) -> int {
-    //     switch (env.options->increasedNumeralWeight()) {
-    //         case Options::IncreasedNumeralWeight::LINEAR:
-    //             return x;
-    //         case Options::IncreasedNumeralWeight::ON:
-    //         default:
-    //             return BitUtils::log2(x);
-    //     };
-    // };
-
     static auto const scale =
         env.options->increasedNumeralWeight() == Options::IncreasedNumeralWeight::LINEAR
         ? [] (int x) -> int { return x; }
@@ -742,8 +729,8 @@ float Clause::getEffectiveWeight(const Options& opt)
 
   unsigned w=weight();
   if (opt.increasedNumeralWeight() != Options::IncreasedNumeralWeight::OFF) {
-    // return (2*w+getNumeralWeight()) * ( !goal ? nongoalWeightCoef : 1.0f);
-    return w+getNumeralWeight();
+    return (2*w+getNumeralWeight()) * ( !goal ? nongoalWeightCoef : 1.0f);
+    // return w + getNumeralWeight();    // NOTE(JR): experimented with that during meeting 2019-03-01
   }
   else {
     return w * ( !goal ? nongoalWeightCoef : 1.0f);
@@ -752,42 +739,47 @@ float Clause::getEffectiveWeight(const Options& opt)
 
 unsigned Clause::getWeightWithPenalty() const
 {
-  unsigned const pf = env.options->penaltyFactor();
-  // P/NC is in range 1..20
-  // We normalize the range to starting point 0.
-  //
-  // Formula:
-  //   w + pf * (P/NC - 1)
-  //
-  // Rearranging so we don't need double:
-  //   w + ((pf * P) / NC) - pf
-  // return weight() + (pf * penalty()) / proofTreeNumClauses() - pf;
+    static unsigned const pf = env.options->penaltyFactor();
 
-  // Actually, adding a constant should not matter (since we use this value only for comparisons).
-  // To avoid overflow we don't normalize (may happen if penalty is changed with options... then the penalty is not guaranteed to be >= 1 any more).
-  //   w + ((pf * P) / NC)
-  // return weight() + (pf * penalty()) / proofTreeNumClauses();
+    // P/NC is in range 1..20
+    // We normalize the range to starting point 0.
+    //
+    // Formula:
+    //   w + pf * (P/NC - 1)
+    //
+    // Rearranging so we don't need double:
+    //   w + ((pf * P) / NC) - pf
+    // return weight() + (pf * penalty()) / proofTreeNumClauses() - pf;
 
-  // ASS(weight() * penalty() < (std::numeric_limits<unsigned>::max() / 1000));
-  // double p = penalty();
-  // double nc = proofTreeNumClauses();
-  // return static_cast<unsigned>(1000 * weight() * (1 + p / (nc - p + 1)));
+    // Actually, adding a constant should not matter (since we use this value only for comparisons).
+    // To avoid overflow we don't normalize (may happen if penalty is changed with options... then the penalty is not guaranteed to be >= 1 any more).
+    //   w + ((pf * P) / NC)
+    // return weight() + (pf * penalty()) / proofTreeNumClauses();
 
+    // ASS(weight() * penalty() < (std::numeric_limits<unsigned>::max() / 1000));
+    // double p = penalty();
+    // double nc = proofTreeNumClauses();
+    // return static_cast<unsigned>(1000 * weight() * (1 + p / (nc - p + 1)));
 
-  double p = penalty();
-  double nc = proofTreeNumClauses();
-  double g = std::log10(nc) + 1;
-  double f = 1 + (g * p / (nc - p + 1));
+    /*
+    // from meeting 2019-03-01
+    double p = penalty();
+    double nc = proofTreeNumClauses();
+    double g = std::log10(nc) + 1;
+    double f = 1 + (g * p / (nc - p + 1));
 
-  unsigned w=weight();
-  if (env.options->increasedNumeralWeight() != Options::IncreasedNumeralWeight::OFF) {
-    w += const_cast<Clause*>(this)->getNumeralWeight();
-  }
-  return static_cast<unsigned>(1000 * w * f);
+    unsigned w = weight();
+    if (env.options->increasedNumeralWeight() != Options::IncreasedNumeralWeight::OFF) {
+        w += getNumeralWeight();
+    }
+    return static_cast<unsigned>(1000 * w * f);
+    */
 
+    // w + pf * P / 100
+    // return weight() * (pf * penalty()) / 100;
 
-  // w + pf * P / 100
-  // return weight() + (pf * penalty()) / 100;
+    // Disabled for now
+    return weight();
 }
 
 void Clause::collectVars(DHSet<unsigned>& acc)
