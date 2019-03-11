@@ -489,12 +489,6 @@ vstring Clause::toString() const
   result += "NI(" + Int::toString(proofTreeNumInferences()) + ") ";
   result += "NR(" + Int::toString(proofTreeNumReductions()) + ") ";
 
-  double p = penalty();
-  double nc = proofTreeNumClauses();
-  double g = std::log10(nc) + 1;
-  double f = 1 + (g * p / (nc - p + 1));
-  result += "F(" + std::to_string(f) + ") ";
-
   if (proofTreeNumClauses() > 0) {
       float r = static_cast<float>(penalty()) / proofTreeNumClauses();
       result += "P/NC(" + std::to_string(r) + ") ";
@@ -505,17 +499,17 @@ vstring Clause::toString() const
   }
   result += "WP(" + Int::toString(getWeightWithPenalty()) + ") ";
 
-  if (activationReason() != AR_NONE) {
+  if (activationReason() != ActivationReason::NONE) {
       result += "AR(";
       switch (activationReason()) {
-          case AR_AGE:
+          case ActivationReason::BY_AGE:
               result += "A";
               break;
-          case AR_WEIGHT:
+          case ActivationReason::BY_WEIGHT:
               result += "W";
               break;
           default:
-              result += std::to_string(activationReason());
+              result += std::to_string((int)activationReason());
               break;
       }
       result += ") ";

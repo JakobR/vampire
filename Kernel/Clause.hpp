@@ -209,10 +209,10 @@ public:
       _proofTreeNumReductions = x;
   }
 
-  enum ActivationReason {
-      AR_NONE = 0,
-      AR_WEIGHT = 1,
-      AR_AGE = 2
+  enum class ActivationReason {
+      NONE = 0,
+      BY_WEIGHT = 1,
+      BY_AGE = 2,
   };
   ActivationReason activationReason() const
   {
@@ -432,7 +432,7 @@ protected:
   unsigned _proofTreeNumInferences;
   unsigned _proofTreeNumReductions;  // clause reductions (simplifications)
 
-  ActivationReason _activationReason = AR_NONE;
+  ActivationReason _activationReason = ActivationReason::NONE;
 
   /** storage class */
   Store _store;
