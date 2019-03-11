@@ -451,8 +451,7 @@ void SaturationAlgorithm::onClauseReduction(Clause* cl, Clause* replacement,
   CALL("SaturationAlgorithm::onClauseReduction/4");
   ASS(cl);
 
-  // static ClauseStack premStack;  // TODO why is this static??
-  ClauseStack premStack;
+  static ClauseStack premStack;
   premStack.reset();
   premStack.loadFromIterator(premises);
 
@@ -473,9 +472,9 @@ void SaturationAlgorithm::onClauseReduction(Clause* cl, Clause* replacement,
   }
 
   if (replacement) {
-    // replacement->setPenalty(cl->penalty() + env.options->penaltyPerSimplifyingInference());
-    replacement->setProofTreeNumReductions(cl->proofTreeNumReductions() + 1);
+    replacement->setPenalty(cl->penalty() + env.options->penaltyPerSimplifyingInference());
     replacement->setProofTreeNumClauses(cl->proofTreeNumClauses() + 1);
+    replacement->setProofTreeNumReductions(cl->proofTreeNumReductions() + 1);
 
     onParenthood(replacement, cl);
     while (premStack.isNonEmpty()) {
