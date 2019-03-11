@@ -741,7 +741,13 @@ public:
     EXISTS_SYM = 4,
     POSITION = 5
   };
-    
+
+  enum class IncreasedNumeralWeight : unsigned int {
+      OFF = 0,
+      ON = 1,  // logarithmic (base 2); this was the previous value for "on"
+      LINEAR = 2
+  };
+
     //==========================================================
     // The Internals
     //==========================================================
@@ -1997,7 +2003,7 @@ public:
   /** true if calling set() on non-existing options does not result in a user error */
   IgnoreMissing ignoreMissing() const { return _ignoreMissing.actualValue; }
   void setIgnoreMissing(IgnoreMissing newVal) { _ignoreMissing.actualValue = newVal; }
-  bool increasedNumeralWeight() const { return _increasedNumeralWeight.actualValue; }
+  IncreasedNumeralWeight increasedNumeralWeight() const { return _increasedNumeralWeight.actualValue; }
   TheoryAxiomLevel theoryAxioms() const { return _theoryAxioms.actualValue; }
   //void setTheoryAxioms(bool newValue) { _theoryAxioms = newValue; }
   bool interpretedSimplification() const { return _interpretedSimplification.actualValue; }
@@ -2301,7 +2307,7 @@ private:
    * integers occurring in this clause. This option has not been tested and
    * may be extensive, see Clause::getNumeralWeight()
    */
-  BoolOptionValue _increasedNumeralWeight;
+  ChoiceOptionValue<IncreasedNumeralWeight> _increasedNumeralWeight;
 
   BoolOptionValue _ignoreConjectureInPreprocessing;
 

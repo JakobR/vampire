@@ -65,6 +65,7 @@ private:
   void operator delete(void* ptr) { ASSERTION_VIOLATION; }
 public:
   typedef ArrayishObjectIterator<Clause> Iterator;
+  typedef ArrayishObjectIterator<Clause const> ConstIterator;
 
   DECL_ELEMENT_TYPE(Literal*);
   DECL_ITERATOR_TYPE(Iterator);
@@ -389,7 +390,7 @@ public:
   }
 
   unsigned splitWeight() const;
-  unsigned getNumeralWeight();
+  unsigned getNumeralWeight() const;
   float getEffectiveWeight(const Shell::Options& opt);
 
   void collectVars(DHSet<unsigned>& acc);

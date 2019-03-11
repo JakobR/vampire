@@ -640,60 +640,79 @@ unsigned Clause::splitWeight() const
 
 /**
  * Returns the numeral weight of a clause. The weight is defined as the sum of
- * binary sizes of all integers occurring in this clause.
+ * binary sizes of all integers occurring in this clause;
+ * unless the option "increased_numeral_weight" is set to "linear",
+ * in which case the weight is the absolute value of the numeral.
  * @warning Each call to this function recomputes the numeral weight, so the call may
  *          potentially result in traversing the whole clause
  * @since 04/05/2013 Manchester, updated to use new NonVariableIterator
  * @author Andrei Voronkov
  */
-unsigned Clause::getNumeralWeight() 
+unsigned Clause::getNumeralWeight() const
 {
-  CALL("Clause::getNumeralWeight");
+    CALL("Clause::getNumeralWeight");
 
-  unsigned res=0;
-  Iterator litIt(*this);
-  while (litIt.hasNext()) {
-    Literal* lit=litIt.next();
-    if (!lit->hasInterpretedConstants()) {
-      continue;
+    // static bool const scaleLinearly =
+    //     env.options->increasedNumeralWeight() == Options::IncreasedNumeralWeight::LINEAR;
+
+    // static auto const scale = [] (int x) -> int {
+    //     switch (env.options->increasedNumeralWeight()) {
+    //         case Options::IncreasedNumeralWeight::LINEAR:
+    //             return x;
+    //         case Options::IncreasedNumeralWeight::ON:
+    //         default:
+    //             return BitUtils::log2(x);
+    //     };
+    // };
+
+    static auto const scale =
+        env.options->increasedNumeralWeight() == Options::IncreasedNumeralWeight::LINEAR
+        ? [] (int x) -> int { return x; }
+        : [] (int x) -> int { return BitUtils::log2(x); };
+
+    unsigned res = 0;
+    ConstIterator litIt(*this);
+    while (litIt.hasNext()) {
+        Literal* lit = litIt.next();
+        if (!lit->hasInterpretedConstants()) {
+            continue;
+        }
+        NonVariableIterator nvi(lit);
+        while (nvi.hasNext()) {
+            Term* t = nvi.next().term();
+            if (t->arity() != 0) {
+                continue;
+            }
+            IntegerConstantType intVal;
+            if (theory->tryInterpretConstant(t, intVal)) {
+                int const w = scale(abs(intVal.toInner())) - 1;
+                if (w > 0) {
+                    res += w;
+                }
+                continue;
+            }
+            RationalConstantType ratVal;
+            RealConstantType realVal;
+            bool haveRat = false;
+            if (theory->tryInterpretConstant(t, ratVal)) {
+                haveRat = true;
+            }
+            else if (theory->tryInterpretConstant(t, realVal)) {
+                ratVal = RationalConstantType(realVal);
+                haveRat = true;
+            }
+            if (!haveRat) {
+                continue;
+            }
+            int const wN = scale(abs(ratVal.numerator().toInner())) - 1;
+            int const wD = scale(abs(ratVal.denominator().toInner())) - 1;
+            int const v = wN + wD;
+            if (v > 0) {
+                res += v;
+            }
+        }
     }
-    NonVariableIterator nvi(lit);
-    while (nvi.hasNext()) {
-      const Term* t = nvi.next().term();
-      if (t->arity() != 0) {
-	continue;
-      }
-      IntegerConstantType intVal;
-      if (theory->tryInterpretConstant(t,intVal)) {
-	// int w = BitUtils::log2(abs(intVal.toInner()))-1;
-	int w = abs(intVal.toInner()) - 1;
-	if (w > 0) {
-	  res += w;
-	}
-	continue;
-      }
-      RationalConstantType ratVal;
-      RealConstantType realVal;
-      bool haveRat = false;
-      if (theory->tryInterpretConstant(t,ratVal)) {
-	haveRat = true;
-      }
-      else if (theory->tryInterpretConstant(t,realVal)) {
-	ratVal = RationalConstantType(realVal);
-	haveRat = true;
-      }
-      if (!haveRat) {
-	continue;
-      }
-      int wN = BitUtils::log2(abs(ratVal.numerator().toInner()))-1;
-      int wD = BitUtils::log2(abs(ratVal.denominator().toInner()))-1;
-      int v = wN + wD;
-      if (v > 0) {
-	res += v;
-      }
-    }
-  }
-  return res;
+    return res;
 } // getNumeralWeight
 
 /**
@@ -722,7 +741,7 @@ float Clause::getEffectiveWeight(const Options& opt)
   } 
 
   unsigned w=weight();
-  if (opt.increasedNumeralWeight()) {
+  if (opt.increasedNumeralWeight() != Options::IncreasedNumeralWeight::OFF) {
     // return (2*w+getNumeralWeight()) * ( !goal ? nongoalWeightCoef : 1.0f);
     return w+getNumeralWeight();
   }
@@ -761,7 +780,7 @@ unsigned Clause::getWeightWithPenalty() const
   double f = 1 + (g * p / (nc - p + 1));
 
   unsigned w=weight();
-  if (env.options->increasedNumeralWeight()) {
+  if (env.options->increasedNumeralWeight() != Options::IncreasedNumeralWeight::OFF) {
     w += const_cast<Clause*>(this)->getNumeralWeight();
   }
   return static_cast<unsigned>(1000 * w * f);

@@ -111,7 +111,7 @@ Comparison AWPassiveClauseContainer::compareWeight(Clause* cl1, Clause* cl2, con
   // // std::cerr << " / w1'' = " << cl1Weight2;
   // std::cerr << std::endl;
 
-  if (opt.increasedNumeralWeight()) {
+  if (opt.increasedNumeralWeight() != Options::IncreasedNumeralWeight::OFF) {
     cl1Weight=cl1Weight*2+cl1->getNumeralWeight();
     cl2Weight=cl2Weight*2+cl2->getNumeralWeight();
   }

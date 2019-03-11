@@ -1626,11 +1626,16 @@ void Options::Options::init()
     _bfnt.setRandomChoices({},{"on","off","off","off","off","off"});
     _bfnt.setExperimental();
     
-    _increasedNumeralWeight = BoolOptionValue("increased_numeral_weight","inw",false);
-    _increasedNumeralWeight.description=
-             "This option only applies if the problem has interpreted numbers. The weight of integer constants depends on the logarithm of their absolute value (instead of being 1)";
+    _increasedNumeralWeight = ChoiceOptionValue<IncreasedNumeralWeight>("increased_numeral_weight", "inw",
+                                                                        IncreasedNumeralWeight::OFF,
+                                                                        { "off", "on", "linear" });
+    _increasedNumeralWeight.description =
+        "This option only applies if the problem has interpreted numbers. "
+        "When 'on', the weight of integer constants depends on the logarithm of their absolute value (instead of being 1); "
+        "when 'linear', the weight depends linearly on the absolute value instead.";
     _lookup.insert(&_increasedNumeralWeight);
     _increasedNumeralWeight.tag(OptionTag::SATURATION);
+    _increasedNumeralWeight.setRandomChoices({ "off", "on", "linear" });
 
 
     _interpretedSimplification = BoolOptionValue("interpreted_simplification","",false);
