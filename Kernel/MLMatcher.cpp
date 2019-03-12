@@ -510,8 +510,7 @@ using namespace MLMatcher_AUX;
 /**
  *
  */
-bool MLMatcher::canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts,
-	Literal* resolvedLit, bool multiset)
+bool MLMatcher::canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
 {
   CALL("MLMatcher::canBeMatched");
 

@@ -122,10 +122,12 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   TimeCounter tc(TC_FORWARD_SUBSUMPTION_INDEX_MAINTENANCE);
 
   Literal* best=(*c)[0];
-  unsigned bestVal=best->weight()-best->getDistinctVars();
+  unsigned bestVal = best->weight() - best->getDistinctVars();
+  // val == #non-variable-symbols + #variable-duplicates ???
+  // Why is this a good index for forward subsumption??
   for(unsigned i=1;i<clen;i++) {
     Literal* curr=(*c)[i];
-    unsigned currVal=curr->weight()-curr->getDistinctVars();
+    unsigned currVal = curr->weight() - curr->getDistinctVars();
     if(currVal>bestVal || (currVal==bestVal && curr>best) ) {
       best=curr;
       bestVal=currVal;

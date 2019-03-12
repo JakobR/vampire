@@ -71,6 +71,10 @@ private:
     {
       CALL("LiteralMiniIndex::BaseIterator::BaseIterator");
 
+      // A literal's header encodes its functor and polarity.
+      // All entries are sorted by the literal's header.
+      // => We use binary search to find the first entry with the same header as the query literal.
+      //    The query can only be true if the header is the same.
       Entry* arr=index._entries.array();
       unsigned weight=query->weight();
       if(arr[0]._header>=_hdr || index._cnt==1) {
@@ -124,8 +128,8 @@ public:
       CALL("LiteralMiniIndex::InstanceIterator::hasNext");
 
       if(_ready) { return true; }
-      while(_curr->_header==_hdr) {
-	bool prediction=_curr->_lit->couldArgsBeInstanceOf(_query);
+      while(_curr->_header == _hdr) {   // same header means same functor and polarity
+	bool prediction = _curr->_lit->couldArgsBeInstanceOf(_query);   // always true since USE_MATCH_TAG == 0
 #if VDEBUG
 	if(MatchingUtils::match(_query, _curr->_lit, _compl)) {
 	  ASS(prediction);

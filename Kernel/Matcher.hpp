@@ -48,7 +48,7 @@ public:
   static Formula* getInstanceFromMatch(Literal* matchedBase,
       Literal* matchedInstance, Formula* resultBase);
 
-  static bool isVariant(Literal* l1, Literal* l2, bool complementary=false);
+  static bool isVariant(Literal* l1, Literal* l2, bool complementary = false);
 
   static bool haveReversedVariantArgs(Term* l1, Term* l2);
   static bool haveVariantArgs(Term* l1, Term* l2);
@@ -70,6 +70,8 @@ public:
    * must contain function reset() that resets the binding. The
    * @b binder is reset by the function also for the first time if
    * needed.
+   *
+   * NOTE(JR): wrong, binder has functions bind, specVar, and reset! (see matchArgs at the end)
    */
   template<class Binder>
   static bool match(Literal* base, Literal* instance, bool complementary, Binder& binder)
@@ -290,6 +292,8 @@ private:
  * (unsigned var, TermList term), that in case variable @b var is
  * unbound, binds it to @b term and returns true, if @b var is
  * bound, returns true iff it is bound to @b term.
+ *
+ * NOTE(JR): wrong, binder has functions bind, specVar, and reset!
  */
 template<class Binder>
 bool MatchingUtils::matchArgs(Term* base, Term* instance, Binder& binder)

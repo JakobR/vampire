@@ -26,6 +26,7 @@
 #ifndef __MLMatcher__
 #define __MLMatcher__
 
+#include "Clause.hpp"
 #include "Forwards.hpp"
 
 namespace Kernel {
@@ -34,12 +35,10 @@ using namespace Lib;
 
 class MLMatcher {
 public:
-  static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts,
-  	Literal* resolvedLit, bool multiset);
-  static bool canBeMatched(Clause* base, Clause* instance, LiteralList** alts,
-  	Literal* resolvedLit)
+  static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset);
+  static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList** alts, Literal* resolvedLit)
   {
-    return canBeMatched(base->literals(), base->length(), instance, alts, resolvedLit, resolvedLit==0);
+    return canBeMatched(base->literals(), base->length(), instance, alts, resolvedLit, resolvedLit == nullptr /* ??? */);
   }
 
 
@@ -48,8 +47,7 @@ public:
 
 private:
   template<class T, class U>
-  static void orderLiterals(T& base, U& alts,
-	  DArray<Literal*>& baseOrd, DArray<LiteralList*>& altsOrd);
+  static void orderLiterals(T& base, U& alts, DArray<Literal*>& baseOrd, DArray<LiteralList*>& altsOrd);
 };
 
 

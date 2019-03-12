@@ -31,6 +31,7 @@
 #define __STLAllocator__
 
 #include <limits>
+#include <memory>
 
 #include "Lib/Allocator.hpp"
 

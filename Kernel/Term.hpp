@@ -704,13 +704,13 @@ public:
   }
 
   /**
-   * A unique header, 2*p is negative and 2*p+1 if positive where p is
+   * A unique header, 2*p if negative and 2*p+1 if positive where p is
    * the number of the predicate symbol.
    */
   unsigned header() const
   { return 2*_functor + polarity(); }
   /**
-   * Header of the complementary literal, 2*p+1 is negative and 2*p
+   * Header of the complementary literal, 2*p+1 if negative and 2*p
    * if positive where p is the number of the predicate symbol.
    */
   unsigned complementaryHeader() const
