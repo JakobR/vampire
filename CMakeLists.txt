@@ -417,8 +417,10 @@ set(VAMPIRE_INFERENCE_SOURCES
     Inferences/URResolution.hpp
     # Inferences/TheoryInstAndSimp.hpp
     # Inferences/TheoryInstAndSimp.cpp  # ???
-    Inferences/TheoryRuleAttempt.hpp
     Inferences/TheoryRuleAttempt.cpp
+    Inferences/TheoryRuleAttempt.hpp
+    Inferences/ForwardSubsumptionDemodulation.cpp
+    Inferences/ForwardSubsumptionDemodulation.hpp
     )
 source_group(inference_source_files FILES ${VAMPIRE_INFERENCE_SOURCES})
 
