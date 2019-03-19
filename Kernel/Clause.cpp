@@ -489,6 +489,12 @@ vstring Clause::toString() const
   result += "NI(" + Int::toString(proofTreeNumInferences()) + ") ";
   result += "NR(" + Int::toString(proofTreeNumReductions()) + ") ";
 
+  // double p = penalty();
+  // double nc = proofTreeNumClauses();
+  // double g = std::log10(nc) + 1;
+  // double f = 1 + (g * p / (nc - p + 1));
+  // result += "F(" + std::to_string(f) + ") ";
+
   if (proofTreeNumClauses() > 0) {
       float r = static_cast<float>(penalty()) / proofTreeNumClauses();
       result += "P/NC(" + std::to_string(r) + ") ";
@@ -767,7 +773,7 @@ unsigned Clause::getWeightWithPenalty() const
         w += getNumeralWeight();
     }
     return static_cast<unsigned>(1000 * w * f);
-    */
+    // */
 
     // w + pf * P / 100
     // return weight() * (pf * penalty()) / 100;
