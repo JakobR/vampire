@@ -1173,8 +1173,14 @@ void Options::Options::init()
     _forwardSubsumptionResolution.description="Perform forward subsumption resolution.";
     _lookup.insert(&_forwardSubsumptionResolution);
     _forwardSubsumptionResolution.tag(OptionTag::INFERENCES);
-    _forwardSubsumptionResolution    .reliesOn(_saturationAlgorithm.is(notEqual(SaturationAlgorithm::INST_GEN))->Or<bool>(_instGenWithResolution.is(equal(true))));
+    _forwardSubsumptionResolution.reliesOn(_saturationAlgorithm.is(notEqual(SaturationAlgorithm::INST_GEN))->Or<bool>(_instGenWithResolution.is(equal(true))));
     _forwardSubsumptionResolution.setRandomChoices({"on","off"});
+
+    _forwardSubsumptionDemodulation = BoolOptionValue("forward_subsumption_demodulation", "fsd", false);
+    _forwardSubsumptionDemodulation.description = "Perform forward subsumption demodulation.";
+    _lookup.insert(&_forwardSubsumptionDemodulation);
+    _forwardSubsumptionDemodulation.tag(OptionTag::INFERENCES);
+    _forwardSubsumptionDemodulation.setRandomChoices({"on","off"});
 
     _hyperSuperposition = BoolOptionValue("hyper_superposition","",false);
     _hyperSuperposition.description=

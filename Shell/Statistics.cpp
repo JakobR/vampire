@@ -45,7 +45,6 @@
 #include "Statistics.hpp"
 
 
-using namespace std;
 using namespace Lib;
 using namespace Saturation;
 using namespace Shell;
@@ -96,6 +95,7 @@ Statistics::Statistics()
     forwardDemodulationsToEqTaut(0),
     backwardDemodulations(0),
     backwardDemodulationsToEqTaut(0),
+    forwardSubsumptionDemodulations(0),
     forwardLiteralRewrites(0),
     condensations(0),
     globalSubsumption(0),
@@ -278,6 +278,7 @@ void Statistics::print(ostream& out)
   COND_OUT("Bw subsumption resolutions", backwardSubsumptionResolution);
   COND_OUT("Fw demodulations", forwardDemodulations);
   COND_OUT("Bw demodulations", backwardDemodulations);
+  COND_OUT("Fw subsumption demodulations", forwardSubsumptionDemodulations);
   COND_OUT("Fw literal rewrites", forwardLiteralRewrites);
   COND_OUT("Inner rewrites", innerRewrites);
   COND_OUT("Condensations", condensations);

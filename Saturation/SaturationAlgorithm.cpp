@@ -60,6 +60,7 @@
 #include "Inferences/ForwardDemodulation.hpp"
 #include "Inferences/ForwardLiteralRewriting.hpp"
 #include "Inferences/ForwardSubsumptionAndResolution.hpp"
+#include "Inferences/ForwardSubsumptionDemodulation.hpp"
 #include "Inferences/GlobalSubsumption.hpp"
 #include "Inferences/HyperSuperposition.hpp"
 #include "Inferences/InnerRewriting.hpp"
@@ -1438,6 +1439,10 @@ SaturationAlgorithm* SaturationAlgorithm::createFromOptions(Problem& prb, const 
   }
   else if (opt.forwardSubsumptionResolution()) {
     USER_ERROR("Forward subsumption resolution requires forward subsumption to be enabled.");
+  }
+
+  if (opt.forwardSubsumptionDemodulation()) {
+    res->addForwardSimplifierToFront(new ForwardSubsumptionDemodulation());
   }
 
   // create backward simplification engine
