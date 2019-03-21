@@ -187,12 +187,13 @@ bool ForwardDemodulation::perform(Clause* cl, Clause*& replacement, ClauseIterat
 	      continue;
 	    }
 	  }
-	}
+	} // if (toplevelCheck)
 
 	Literal* resLit = EqHelper::replace(lit,trm,rhsS);
 	if(EqHelper::isEqTautology(resLit)) {
 	  env.statistics->forwardDemodulationsToEqTaut++;
 	  premises = pvi( getSingletonIterator(qr.clause));
+          // Clause reduction was successful but we don't set the replacement (because it is a tautology)
 	  return true;
 	}
 
