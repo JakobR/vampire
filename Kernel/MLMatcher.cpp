@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <set>
 
 #include "Lib/Backtrackable.hpp"
 #include "Lib/BacktrackIterators.hpp"
@@ -47,7 +48,6 @@
 #if VDEBUG
 #include <iostream>
 #include "Test/Output.hpp"
-using namespace std;
 #endif
 
 #define TRACE_LONG_MATCHING 0
@@ -232,6 +232,9 @@ struct MatchingData {
     NO_ALTERNATIVE
   };
 
+  std::vector<unsigned, STLAllocator<unsigned>> currentAlts;
+  std::vector<unsigned, STLAllocator<unsigned>> originalBaseIndex;
+
   unsigned getRemainingInCurrent(unsigned bi)
   {
     return remaining->get(bi,bi);
@@ -287,6 +290,7 @@ struct MatchingData {
       }
       remaining->set(i,bIndex+1,remAlts);
     }
+    currentAlts[bIndex] = altIndex;
     return true;
   }
 
@@ -427,6 +431,17 @@ MatchingData* getMatchingData(Literal** baseLits0, unsigned baseLen, Clause* ins
   unsigned mostDistVarsLit=0;
   unsigned mostDistVarsCnt=s_baseLits[0]->getDistinctVars();
 
+  s_matchingData.originalBaseIndex.resize(baseLen);
+  for (unsigned i = 0; i < baseLen; ++i) {
+    s_matchingData.originalBaseIndex[i] = i;
+  }
+
+  auto swapLits = [] (int i, int j) {
+    std::swap(s_baseLits[i], s_baseLits[j]);
+    std::swap(s_altsArr[i], s_altsArr[j]);
+    std::swap(s_matchingData.originalBaseIndex[i], s_matchingData.originalBaseIndex[j]);
+  };
+
   for(unsigned i=0;i<baseLen;i++) {
     unsigned distVars=s_baseLits[i]->getDistinctVars();
 //    unsigned distVars=s_baseLits[i]->vars(); //an upper estimate is enough
@@ -446,11 +461,9 @@ MatchingData* getMatchingData(Literal** baseLits0, unsigned baseLen, Clause* ins
     if(currAltCnt==0) {
       if(zeroAlts!=i) {
 	if(singleAlts!=zeroAlts) {
-	  std::swap(s_baseLits[singleAlts],s_baseLits[zeroAlts]);
-	  std::swap(s_altsArr[singleAlts],s_altsArr[zeroAlts]);
+          swapLits(singleAlts, zeroAlts);
 	}
-	std::swap(s_baseLits[i],s_baseLits[zeroAlts]);
-	std::swap(s_altsArr[i],s_altsArr[zeroAlts]);
+        swapLits(i, zeroAlts);
 	if(mostDistVarsLit==singleAlts) {
 	  mostDistVarsLit=i;
 	}
@@ -459,8 +472,7 @@ MatchingData* getMatchingData(Literal** baseLits0, unsigned baseLen, Clause* ins
       singleAlts++;
     } else if(currAltCnt==1 && !(resolvedLit && resolvedLit->couldBeInstanceOf(s_baseLits[i], true)) ) {
       if(singleAlts!=i) {
-	std::swap(s_baseLits[i],s_baseLits[singleAlts]);
-	std::swap(s_altsArr[i],s_altsArr[singleAlts]);
+        swapLits(i, singleAlts);
 	if(mostDistVarsLit==singleAlts) {
 	  mostDistVarsLit=i;
 	}
@@ -471,9 +483,8 @@ MatchingData* getMatchingData(Literal** baseLits0, unsigned baseLen, Clause* ins
       mostDistVarsCnt=distVars;
     }
   }
-  if(mostDistVarsLit>singleAlts) {
-    std::swap(s_baseLits[mostDistVarsLit],s_baseLits[singleAlts]);
-    std::swap(s_altsArr[mostDistVarsLit],s_altsArr[singleAlts]);
+  if (mostDistVarsLit > singleAlts) {
+    swapLits(mostDistVarsLit, singleAlts);
   }
 
   s_boundVarNumData.ensure(baseLitVars);
@@ -500,6 +511,9 @@ MatchingData* getMatchingData(Literal** baseLits0, unsigned baseLen, Clause* ins
   s_matchingData.altBindingStorage=s_altBindingsData.array();
   s_matchingData.intersectionStorage=s_intersectionData.array();
 
+  s_matchingData.currentAlts.clear();
+  s_matchingData.currentAlts.resize(baseLen);
+
   return &s_matchingData;
 }
 
@@ -510,9 +524,35 @@ using namespace MLMatcher_AUX;
 /**
  *
  */
-bool MLMatcher::canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
+bool MLMatcher::canBeMatchedImpl(Literal** baseLits,
+                                 unsigned baseLen,
+                                 Clause* instance,
+                                 LiteralList** alts,
+                                 Literal* resolvedLit,
+                                 bool multiset,
+                                 LiteralVector* outMatchedAlts,
+                                 BindingsMap* outBindings)
 {
   CALL("MLMatcher::canBeMatched");
+
+  if (resolvedLit) {
+    ASS(!outMatchedAlts);
+    ASS(!outBindings);
+  }
+
+  std::cerr << "Entering MLMatcher::canBeMatched with:\n";
+  for (unsigned j = 0; j < baseLen; ++j) {
+    std::cerr << "\tbase = " << baseLits[j]->toString() << std::endl;
+
+    LiteralList* a = alts[j];
+    while (LiteralList::isNonEmpty(a)) {
+      std::cerr << "\t alt = " << a->head()->toString() << std::endl;
+      a = a->tail();
+    }
+  }
+  std::cerr << "\tinstance = " << instance->toNiceString() << std::endl;
+
+
 
   MatchingData* md=getMatchingData(baseLits, baseLen, instance, alts, resolvedLit);
   if(!md) {
@@ -523,6 +563,11 @@ bool MLMatcher::canBeMatched(Literal** baseLits, unsigned baseLen, Clause* insta
   static DArray<unsigned> matchRecord(32);
   unsigned matchRecordLen=resolvedLit?2:instLen;
   matchRecord.init(matchRecordLen,0xFFFFFFFF);
+  // What is the matchRecord?
+  //   Index is retrieved by getAltRecordIndex:  md->getAltRecordIndex(currBLit, md->nextAlts[currBLit])
+  //   Value is compared to currBLit, so it should refer to a base literal
+  //
+  // So from currBLit we get a record index, and the record is a base literal again???
 
 
   unsigned matchedLen=md->len;
@@ -532,8 +577,51 @@ bool MLMatcher::canBeMatched(Literal** baseLits, unsigned baseLen, Clause* insta
 
   int counter=0;
 
+  auto printDebugInfo = [&]() {
+
+    std::cerr << "MLMatcher::canBeMatched: counter = " << counter << std::endl;
+    std::cerr << "                         currBLit = " << currBLit << std::endl;
+
+    for (unsigned i = 0; i < md->len; ++i) {
+      std::cerr << "\tbases[" << i << "] = " << md->bases[i]->toString() << std::endl;
+    }
+
+    for (unsigned i = 0; i < md->len; ++i) {
+      std::cerr << "\tnextAlts[" << i << "] = " << md->nextAlts[i] << std::endl;
+    }
+
+    for (unsigned i = 0; i < md->len; ++i) {
+      std::cerr << "\tcurrentAlts[" << i << "] = " << md->currentAlts[i] << std::endl;
+    }
+
+    for (unsigned bi = 0; bi < md->len; ++bi) {
+      unsigned alti = 0;
+      if (md->altBindings) {
+        if (md->altBindings[bi]) {
+          if (md->altBindings[bi][alti]) {
+            unsigned ri = md->getAltRecordIndex(bi, alti);
+            std::cerr << "\tgetAltRecordIndex(" << bi << ", " << alti << ") = " << ri << std::endl;
+            if (ri < instance->length()) {
+              Literal* lit = (*instance)[ri];
+              std::cerr << "\tinstance[" << ri << "] = " << lit->toString() << std::endl;
+            }
+            if (ri < matchRecordLen) {
+              unsigned mr = matchRecord[ri];
+              std::cerr << "\tmatchRecord[" << ri << "] = " << mr << std::endl;
+            }
+          }
+        }
+      }
+    }
+
+    for (unsigned i = 0; i < matchRecordLen; ++i) {
+      std::cerr << "\tmatchRecord[" << i << "] = " << matchRecord[i] << std::endl;
+    }
+  };
+
 binding_start:
   while(true) {
+    printDebugInfo();
     MatchingData::InitResult ires=md->ensureInit(currBLit);
     if(ires!=MatchingData::OK) {
       if(ires==MatchingData::MUST_BACKTRACK) {
@@ -545,14 +633,21 @@ binding_start:
       }
     }
 
-    unsigned maxAlt=md->getRemainingInCurrent(currBLit);
-    while(md->nextAlts[currBLit]<maxAlt &&
-	    ( (multiset &&
-		    matchRecord[md->getAltRecordIndex(currBLit, md->nextAlts[currBLit])]<currBLit) ||
-	    !md->bindAlt(currBLit,md->nextAlts[currBLit]) ) ) {
+    unsigned maxAlt = md->getRemainingInCurrent(currBLit);
+    while (md->nextAlts[currBLit] < maxAlt &&
+           (
+             // Reject the alternative (in nextAlt) if at least one of the following holds:
+             // 1. We are multiset matching and the alt is already matched to a previous base literal
+             ( multiset && matchRecord[md->getAltRecordIndex(currBLit, md->nextAlts[currBLit])] < currBLit )
+             // 2. We fail to bindAlt, whatever that is
+             || !md->bindAlt(currBLit, md->nextAlts[currBLit])
+           )
+          ) {
       md->nextAlts[currBLit]++;
     }
+
     if(md->nextAlts[currBLit] < maxAlt) {
+      // Got a suitable alternative in nextAlt
       unsigned matchRecordIndex=md->getAltRecordIndex(currBLit, md->nextAlts[currBLit]);
       for(unsigned i=0;i<matchRecordLen;i++) {
 	if(matchRecord[i]==currBLit) {
@@ -567,6 +662,8 @@ binding_start:
       if(currBLit==matchedLen) { break; }
       md->nextAlts[currBLit]=0;
     } else {
+      // No alt left for currBLit, backtrack
+      ASS_GE(md->nextAlts[currBLit], maxAlt);
       if(currBLit==0) { return false; }
       currBLit--;
     }
@@ -579,14 +676,149 @@ binding_start:
       }
     }
 
-  }
+  } // while (true)
+
   if(resolvedLit && matchRecord[1]>=matchedLen) {
     currBLit--;
     goto binding_start;
   }
+
+  printDebugInfo();
+
+  std::cerr << "\tFOUND MATCHING:\n";
+
+  std::unordered_map<unsigned, TermList, std::hash<unsigned>, std::equal_to<unsigned>, STLAllocator<std::pair<const unsigned, TermList>>> bindings;
+
+  for (unsigned bi = 0; bi < md->len; ++bi) {
+    // ASS_EQ(md->nextAlts[bi], 1);  // if this fails, maybe we should use alti = nextAlts[bi] - 1
+    ASS_EQ(md->nextAlts[bi], md->currentAlts[bi] + 1);  // NOTE: If this is always true, we can remove currentAlts and use nextAlts-1 instead. (even if it's not true, nextAlts-1 might be the correct choice anyways.)
+    // TODO: find an example where nextAlt isn't 1 at the end and check if this is doing the correct thing
+    // E.g. this from hamming2:
+    // Entering MLMatcher::canBeMatched with:
+    //    base = hammingWeight(l17_rEnd(sK3),t1) != hammingWeight(l17_rEnd(s(sK3)),t1)
+    //     alt = hammingWeight(l17_rEnd(sK3),t1) != hammingWeight(l17_rEnd(s(sK3)),t1)
+    //    base = hammingWeight(l17_rEnd(X0),t1) = hammingWeight(l17_rEnd(X0),t2)
+    //     alt = hammingWeight(l17_rEnd(X3),t1) = hammingWeight(l17_rEnd(X3),t2)
+    //     alt = hammingWeight(l17_rEnd(X2),t1) = hammingWeight(l17_rEnd(X2),t2)
+    //    base = hammingWeight(l17_rEnd(X1),t1) = hammingWeight(l17_rEnd(X1),t2)
+    //     alt = hammingWeight(l17_rEnd(X3),t1) = hammingWeight(l17_rEnd(X3),t2)
+    //     alt = hammingWeight(l17_rEnd(X2),t1) = hammingWeight(l17_rEnd(X2),t2)
+    //    instance = hammingWeight(l17_rEnd(sK3),t1) != hammingWeight(l17_rEnd(s(sK3)),t1) | hammingWeight(l17_rEnd(X2),t1) = hammingWeight(l17_rEnd(X2),t2) | 'Sub'(s(sK3),s(sK0(X2,s(sK3)))) | hammingWeight(l17_rEnd(X3),t1) = hammingWeight(l17_rEnd(X3),t2)
+    Literal* b = md->bases[bi];
+    std::cerr << "\t\tbase = " << b->toString() << std::endl;
+    unsigned alti = md->nextAlts[bi] - 1;
+    unsigned i = md->getAltRecordIndex(bi, alti);
+    Literal* a = (*instance)[i];
+    std::cerr << "\t\t alt = " << a->toString() << std::endl;
+    std::cerr << "\t\t vars:\n";
+    for (unsigned vi = 0; vi < md->varCnts[bi]; ++vi) {
+      TermList t = md->altBindings[bi][alti][vi];
+      std::cerr << "\t\t\t " << vi << " -> " << t << std::endl;
+      // std::cerr << "\t\t\t " << vi << " -> " << t.content();
+      // if (t.content() != 0) {
+      //   std::cerr << " / " << t;
+      // }
+      // std::cerr << std::endl;
+    }
+
+    // NOTE: we want an *ordered* set
+    std::set<unsigned, std::less<unsigned>, STLAllocator<unsigned>> bvars;
+    VariableIterator bvit(b);
+    while (bvit.hasNext()) {
+      bvars.insert(bvit.next().var());
+    }
+    ASS_EQ(bvars.size(), md->varCnts[bi]);
+    unsigned vi = 0;
+    for (unsigned v : bvars) {
+      TermList t = md->altBindings[bi][alti][vi];
+      auto [ it, inserted ] = bindings.insert({v, t});
+      if (!inserted) {
+        ASS_EQ(it->second, t);
+      }
+      ++vi;
+    }
+  }
+
+  std::cerr << "\tBINDINGS:\n";
+  for (auto [v,t] : bindings) {
+    std::cerr << "\t\t" << TermList(v, false) << " -> " << t << std::endl;
+  }
+
+  // Return matched literals, if requested
+  if (outMatchedAlts) {
+    std::cerr << "\tReturning matches..." << std::endl;
+    outMatchedAlts->resize(md->len, nullptr);
+    ASS_EQ(md->len, outMatchedAlts->size());
+    for (unsigned bi = 0; bi < md->len; ++bi) {
+      unsigned obi = md->originalBaseIndex[bi];
+      ASS_EQ(md->bases[bi], baseLits[obi]);
+
+      unsigned alti = md->currentAlts[bi];
+      unsigned ai = md->getAltRecordIndex(bi, alti);
+      (*outMatchedAlts)[obi] = (*instance)[ai];
+    }
+    // Below is wrong because base/alts is reordered before matching (to try to reduce backtracking)
+    // for (unsigned i = 0; i < md->len; ++i) {
+    //   unsigned ai = md->currentAlts[i];
+    //   LiteralList* a = alts[i];
+    //   while (ai > 0) {
+    //     ASS(LiteralList::isNonEmpty(a));
+    //     a = a->tail();
+    //   }
+    //   ASS(LiteralList::isNonEmpty(a));
+    //   (*outMatchedAlts)[i] = a->head();
+    // }
+  }
+
+  // Return variable bindings, if requested
+  if (outBindings) {
+    std::cerr << "\tReturning bindings..." << std::endl;
+    outBindings->clear();
+
+    for (unsigned bi = 0; bi < md->len; ++bi) {
+      ASS_EQ(md->nextAlts[bi], md->currentAlts[bi] + 1);  // NOTE: If this is always true, we can remove currentAlts and use nextAlts-1 instead. (even if it's not true, nextAlts-1 might be the correct choice anyways.)
+
+      Literal* b = md->bases[bi];
+      unsigned alti = md->nextAlts[bi] - 1;
+      ASS_EQ(alti, md->currentAlts[bi]);
+
+      /*
+      // md->altBindings[bi][alti] contains bindings for the variables in b, ordered by the variable index
+      // (which might be a different order than what the VariableIterator returns).
+      // So we sort and de-duplicate them first with a set.
+      std::set<unsigned, std::less<unsigned>, STLAllocator<unsigned>> bvars;
+      VariableIterator bvit(b);
+      while (bvit.hasNext()) {
+        bvars.insert(bvit.next().var());
+      }
+      ASS_EQ(bvars.size(), md->varCnts[bi]);
+      unsigned vi = 0;
+      for (unsigned v : bvars) {
+        TermList t = md->altBindings[bi][alti][vi];
+        auto [ it, inserted ] = outBindings->insert({v, t});
+        if (!inserted) {
+          ASS_EQ(it->second, t);
+        }
+        ++vi;
+      }
+      */
+
+      for (unsigned vi = 0; vi < md->varCnts[bi]; ++vi) {
+        unsigned var = md->boundVarNums[bi][vi];
+        TermList trm = md->altBindings[bi][alti][vi];
+        auto [ it, inserted ] = outBindings->insert({var, trm});
+        if (!inserted) {
+          ASS_EQ(it->second, trm);
+        }
+      }
+    }
+  }
+
   return true;
 }
 
+
+/* NOTE(JR): dead code
 
 struct MatchBtrFn
 {
@@ -615,6 +847,7 @@ bool MLMatcher::canBeMatched(Clause* base, DArray<LiteralList*>& alts)
 
   return sbit.hasNext();
 }
+*/
 
 
 /**
@@ -622,6 +855,7 @@ bool MLMatcher::canBeMatched(Clause* base, DArray<LiteralList*>& alts)
  * @b alts is supposed to be an array of LiteralList* with the same number
  * of elements as @b base.
  */
+/* NOTE(JR): dead code
 template<class T, class U>
 void MLMatcher::orderLiterals(T& base, U& alts,
 	  DArray<Literal*>& baseOrd, DArray<LiteralList*>& altsOrd)
@@ -663,5 +897,6 @@ void MLMatcher::orderLiterals(T& base, U& alts,
   ASS_EQ(nextli, baseLen);
   len2lits.reset();
 }
+*/
 
 }
