@@ -96,6 +96,7 @@ Statistics::Statistics()
     backwardDemodulations(0),
     backwardDemodulationsToEqTaut(0),
     forwardSubsumptionDemodulations(0),
+    forwardSubsumptionDemodulationsToEqTaut(0),
     forwardLiteralRewrites(0),
     condensations(0),
     globalSubsumption(0),
@@ -297,6 +298,7 @@ void Statistics::print(ostream& out)
   COND_OUT("Backward subsumptions", backwardSubsumed);
   COND_OUT("Fw demodulations to eq. taut.", forwardDemodulationsToEqTaut);
   COND_OUT("Bw demodulations to eq. taut.", backwardDemodulationsToEqTaut);
+  COND_OUT("Fw subsumption demodulations to eq. taut.", forwardSubsumptionDemodulationsToEqTaut);
   COND_OUT("Inner rewrites to eq. taut.", innerRewritesToEqTaut);
   SEPARATOR;
 
