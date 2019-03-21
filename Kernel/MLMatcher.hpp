@@ -35,26 +35,13 @@ namespace Kernel {
 
 using namespace Lib;
 
+
 class MLMatcher
 {
   public:
 
     using LiteralVector = std::vector<Literal*, STLAllocator<Literal*>>;
     using BindingsMap = std::unordered_map<unsigned, TermList, std::hash<unsigned>, std::equal_to<unsigned>, STLAllocator<std::pair<const unsigned, TermList>>>;
-
-  private:
-    // TODO I don't know if using outMatchedAlts/outBindings together with resolvedLit works properly, so this is private for now
-    static bool canBeMatchedImpl(
-      Literal** baseLits,
-      unsigned baseLen,
-      Clause* instance,
-      LiteralList** alts,
-      Literal* resolvedLit,
-      bool multiset,
-      LiteralVector* outMatchedAlts = nullptr,
-      BindingsMap* outBindings = nullptr);
-
-  public:
 
     static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, bool multiset, LiteralVector* outMatchedAlts = nullptr, BindingsMap* outBindings = nullptr)
     {
@@ -72,12 +59,17 @@ class MLMatcher
       return canBeMatchedImpl(base->literals(), base->length(), instance, alts, resolvedLit, resolvedLit == nullptr);
     }
 
-    // static bool canBeMatched(Clause* base, DArray<LiteralList*>& matches);
-
-
-  // private:
-  //   template<class T, class U>
-  //   static void orderLiterals(T& base, U& alts, DArray<Literal*>& baseOrd, DArray<LiteralList*>& altsOrd);
+  private:
+    // It's unclear if using outMatchedAlts/outBindings together with resolvedLit works properly, so this is private for now
+    static bool canBeMatchedImpl(
+      Literal** baseLits,
+      unsigned baseLen,
+      Clause* instance,
+      LiteralList** alts,
+      Literal* resolvedLit,
+      bool multiset,
+      LiteralVector* outMatchedAlts = nullptr,
+      BindingsMap* outBindings = nullptr);
 };
 
 
