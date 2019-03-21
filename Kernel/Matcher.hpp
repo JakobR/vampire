@@ -135,6 +135,7 @@ public:
   template<class Binder>
   static bool matchArgs(Term* base, Term* instance, Binder& binder);
 
+  /*
   template<class Map>
   struct MapRefBinder
   {
@@ -151,6 +152,7 @@ public:
   private:
     Map& _map;
   };
+  */
 
 private:
   typedef DHMap<unsigned,TermList,IdentityHash> BindingMap;

@@ -869,7 +869,7 @@ bool SaturationAlgorithm::forwardSimplify(Clause* cl)
     ForwardSimplificationEngine* fse=fsit.next();
 
     {
-      Clause* replacement = 0;
+      Clause* replacement = nullptr;
       ClauseIterator premises = ClauseIterator::getEmpty();
 
       if (fse->perform(cl,replacement,premises)) {
