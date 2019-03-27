@@ -28,6 +28,7 @@
 
 #include "Clause.hpp"
 #include "Forwards.hpp"
+#include "Lib/STL.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -45,19 +46,6 @@ class MLMatcher
   public:
 
     using LiteralVector = std::vector<Literal*, STLAllocator<Literal*>>;
-
-    // TODO: Move these declarations (also v_vector) to some file called Lib/STL.h (or just to forwards.hpp?)
-    template< typename Key
-            , typename Hash = std::hash<Key>
-            , typename KeyEqual = std::equal_to<Key>
-    > using v_unordered_set = std::unordered_set<Key, Hash, KeyEqual, STLAllocator<Key>>;
-
-    template< typename Key
-            , typename T
-            , typename Hash = std::hash<Key>
-            , typename KeyEqual = std::equal_to<Key>
-    > using v_unordered_map = std::unordered_map<Key, T, Hash, KeyEqual, STLAllocator<std::pair<const Key, T>>>;
-
     using BindingsMap = std::unordered_map<unsigned, TermList, std::hash<unsigned>, std::equal_to<unsigned>, STLAllocator<std::pair<const unsigned, TermList>>>;
 
     static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, bool multiset, LiteralVector* outMatchedAlts = nullptr, BindingsMap* outBindings = nullptr)

@@ -15,6 +15,7 @@
 #include "Kernel/SubstHelper.hpp"
 #include "Kernel/Term.hpp"
 #include "Lib/ScopeGuard.hpp"
+#include "Lib/STL.hpp"
 #include "Lib/STLAllocator.hpp"
 #include "Saturation/SaturationAlgorithm.hpp"
 #include <array>
@@ -24,6 +25,7 @@
 #include <vector>
 
 using namespace Kernel;
+using namespace Lib;
 using namespace Inferences;
 using namespace Saturation;
 
@@ -410,8 +412,6 @@ class AccumulatingBinder2
 };  // */
 
 
-template <typename T> using vvector = std::vector<T, STLAllocator<T>>;
-
 bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
 {
   CALL("ForwardSubsumptionDemodulation::perform");
@@ -506,9 +506,9 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
 
         // Now we have to check if (mcl without eqLit) can be instantiated to some subset of cl
-        vvector<Literal*> baseLits;
-        vvector<std::unique_ptr<LiteralList, decltype(&LiteralList::destroy)>> alts_owned;  // stores the LiteralLists with the custom deleter to ensure cleanup
-        vvector<LiteralList*> alts;
+        v_vector<Literal*> baseLits;
+        v_vector<std::unique_ptr<LiteralList, decltype(&LiteralList::destroy)>> alts_owned;  // stores the LiteralLists with the custom deleter to ensure cleanup
+        v_vector<LiteralList*> alts;
         baseLits.reserve(mcl->length() - 1);
         alts.reserve(mcl->length() - 1);
         for (unsigned mi = 0; mi < mcl->length(); ++mi) {
