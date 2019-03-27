@@ -91,6 +91,7 @@ TermList build(TermList t)
 {
   return t;
 }
+// TODO rename build(...) to term(...); because later we also want literal(...) and maybe even clause(...)
 
 template <unsigned Arity>
 class FnBuilder
@@ -222,39 +223,17 @@ void ForwardSubsumptionDemodulation::testSomeStuff()
 }
 
 
-class RequestClauseAux
-{
-  public:
-    RequestClauseAux() {
-      std::cerr << "RequestClauseAux" << std::endl;
-      Clause::requestAux();
-    }
 
-    ~RequestClauseAux() {
-      std::cerr << "~RequestClauseAux" << std::endl;
-      Clause::releaseAux();
-    }
-};
-
-
-
-// template< typename Key = unsigned int
-//         , typename T = TermList
-//         , typename Hash = std::hash<Key>
-//         , typename KeyEqual = std::equal_to<Key>
-//         , typename Allocator = STLAllocator<std::pair<const Key, T>>
-//         >
 class AccumulatingBinder
 {
   public:
 
-    // using BindingsMap = std::unordered_map<Key, T, Hash, KeyEqual, Allocator>;
     using Var = unsigned int;
     using BindingsMap = v_unordered_map<Var, TermList>;
 
     AccumulatingBinder() { }
 
-    // Initialize the current bindings (uncommitted) with the given argument
+    /// Initializes the current bindings (uncommitted) with the given argument
     explicit
     AccumulatingBinder(BindingsMap&& initialBindings)
       : m_checkpoint()
@@ -273,17 +252,17 @@ class AccumulatingBinder
       ASSERTION_VIOLATION;
     }
 
-    // Reset to last checkpoint
+    /// Resets to last checkpoint
     void reset() {
       m_current = m_checkpoint;
     }
 
-    // Commit the current state to a checkpoint
+    /// Commits the current state to a checkpoint
     void commit() {
       m_checkpoint = m_current;
     }
 
-    // Delete all bindings and checkpoints
+    /// Deletes all bindings and checkpoints
     void clear() {
       m_current.clear();
       m_checkpoint.clear();
@@ -318,98 +297,6 @@ class AccumulatingBinder
     BindingsMap m_current;
 };
 
-
-/* // unnecessary
-class AccumulatingBinder2
-{
-  public:
-    using Generation = unsigned int;
-    using Var = unsigned int;
-
-    bool bind(Var var, TermList term)
-    {
-      // If the variable is already bound, it must be bound to the same term.
-      auto [ it, inserted ] = m_bindings.insert({var, {term, m_current_generation}});
-      if (inserted) {
-        m_dirty = true;
-        return true;
-      } else {
-        auto [storedTerm, storedGen] = it->second;
-        ASS_LE(storedGen, m_current_generation);
-        return storedTerm == term;
-      }
-    }
-
-    void specVar(Var var, TermList term)
-    {
-      ASSERTION_VIOLATION;
-    }
-
-    // Reset to last checkpoint
-    void reset() {
-      if (m_dirty) {
-        for (auto it = m_bindings.begin(); it != m_bindings.end(); ) {
-          auto gen = it->second.second;
-          if (gen >= m_current_generation) {
-            it = m_bindings.erase(it);
-          } else {
-            ++it;
-          }
-        }
-        m_dirty = false;
-      }
-    }
-
-    // Commit the current state to a checkpoint
-    void commit() {
-      m_current_generation += 1;
-    }
-
-    // Delete all bindings and checkpoints
-    void clear() {
-      m_bindings.clear();
-      m_current_generation = 0;
-      m_dirty = false;
-    }
-
-    std::optional<TermList> operator[] (Var var) const {
-      auto it = m_bindings.find(var);
-      if (it != m_bindings.end()) {
-        auto [t, gen] = it->second;
-        ASS_LE(gen, m_current_generation);
-        return {t};
-      } else {
-        return {};
-      }
-    }
-
-    // Makes objects of this class work as applicator for substitution
-    // (as defined in Kernel/SubstHelper.hpp)
-    TermList apply(Var var) const {
-      auto ot = operator[](var);
-      if (ot) {
-        return *ot;
-      } else {
-        // If var is not bound, return the variable itself (as TermList)
-        return TermList(var, false);
-      }
-    }
-
-    TermList applyTo(TermList t, bool noSharing = false) const {
-      return SubstHelper::apply(t, *this, noSharing);
-    }
-
-  private:
-    using Hash = std::hash<Var>;
-    using KeyEqual = std::equal_to<Var>;
-    using Record = std::pair<TermList, Generation>;
-    using Allocator = STLAllocator<std::pair<const Var, Record>>;
-    using BindingsMap = std::unordered_map<Var, Record, Hash, KeyEqual, Allocator>;
-
-    BindingsMap m_bindings;
-    Generation m_current_generation = 0;
-    bool m_dirty = false;
-};  // */
 
 
 bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
@@ -457,7 +344,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
   Ordering& ordering = _salg->getOrdering();
 
   // Discards all previous aux values (so after this, hasAux() returns false for any clause).
-  RequestClauseAux aux;
+  Clause::requestAux();
+  ON_SCOPE_EXIT( Clause::releaseAux(); );
 
   // Initialize miniIndex with literals in the clause cl
   LiteralMiniIndex miniIndex(cl);
@@ -507,7 +395,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
         // Now we have to check if (mcl without eqLit) can be instantiated to some subset of cl
         v_vector<Literal*> baseLits;
-        v_vector<std::unique_ptr<LiteralList, decltype(&LiteralList::destroy)>> alts_owned;  // stores the LiteralLists with the custom deleter to ensure cleanup
         v_vector<LiteralList*> alts;
         baseLits.reserve(mcl->length() - 1);
         alts.reserve(mcl->length() - 1);
@@ -524,20 +411,19 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
               LiteralList::push(matched, l);
             }
 
-            alts_owned.emplace_back(l, &LiteralList::destroy);
             alts.push_back(l);
           }
         }
         ASS_GE(baseLits.size(), 1);
         ASS_EQ(baseLits.size(), alts.size());
 
-        // // Ensure cleanup of literal lists
-        // ON_SCOPE_EXIT({
-        //   std::cerr << "destroying LiteralLists" << std::endl;
-        //   for (LiteralList* ll : alts) {
-        //       LiteralList::destroy(ll);
-        //   }
-        // });
+        // Ensure cleanup of LiteralLists
+        ON_SCOPE_EXIT({
+          std::cerr << "destroying LiteralLists" << std::endl;
+          for (LiteralList* ll : alts) {
+              LiteralList::destroy(ll);
+          }
+        });
 
         static MLMatcher matcher;
 
