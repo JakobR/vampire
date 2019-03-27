@@ -1,4 +1,3 @@
-
 /*
  * File MLMatcher.hpp.
  *
@@ -22,7 +21,6 @@
  * supporting multiliteral matching.
  */
 
-
 #ifndef __MLMatcher__
 #define __MLMatcher__
 
@@ -34,124 +32,120 @@ namespace Kernel {
 
 using namespace Lib;
 
-// struct MatchingData;
 
-// TODO: Remove all static stuff from MLMatcher implementation.
-// Then, if static stuff really helps to save allocations for performance, make one shared MLMatcher instance.
 class MLMatcher
 {
+  private:
+    // TODO:
+    // Maybe split construction and initialization.
+    // This allows users to keep a single instance around and reinitialize it whenever needed without having to reallocate memory.
+
+    /**
+     * Initializes the matcher to the given match problem.
+     * The matcher will be in a valid (but unmatched) state.
+     *
+     * Preconditions:
+     * - All literals in 'alts' must appear in 'instance'.
+     * - If resolvedLit is not null, multiset must be false. (Hypothesis; not 100% sure if the matching algorithm breaks in that case)
+     */
+    MLMatcher(Literal** baseLits,
+              unsigned baseLen,
+              Clause* instance,
+              LiteralList** alts,
+              Literal* resolvedLit,
+              bool multiset);
+
   public:
+    MLMatcher(Literal** baseLits,
+              unsigned baseLen,
+              Clause* instance,
+              LiteralList** alts,
+              bool multiset)
+      : MLMatcher(baseLits, baseLen, instance, alts, nullptr, multiset = false)
+    { }
 
-    using LiteralVector = std::vector<Literal*, STLAllocator<Literal*>>;
-    using BindingsMap = std::unordered_map<unsigned, TermList, std::hash<unsigned>, std::equal_to<unsigned>, STLAllocator<std::pair<const unsigned, TermList>>>;
+    MLMatcher(Clause* base,
+              Clause* instance,
+              LiteralList** alts,
+              bool multiset)
+      : MLMatcher(base->literals(), base->length(), instance, alts, multiset = false)
+    { }
 
-    static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, bool multiset, LiteralVector* outMatchedAlts = nullptr, BindingsMap* outBindings = nullptr)
-    {
-      return canBeMatchedImpl(baseLits, baseLen, instance, alts, nullptr, multiset, outMatchedAlts, outBindings);
-    }
+    MLMatcher(Literal** baseLits,
+              unsigned baseLen,
+              Clause* instance,
+              LiteralList** alts,
+              Literal* resolvedLit)
+      : MLMatcher(baseLits, baseLen, instance, alts, resolvedLit, resolvedLit == nullptr)
+      // NOTE: we need multiset matching for subsumption, but for subsumption resolution it is not necessary
+    { }
 
-    static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
-    {
-      return canBeMatchedImpl(baseLits, baseLen, instance, alts, resolvedLit, multiset);
-    }
+    MLMatcher(Clause* base,
+              Clause* instance,
+              LiteralList** alts,
+              Literal* resolvedLit)
+      : MLMatcher(base->literals(), base->length(), instance, alts, resolvedLit)
+    { }
 
-    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList** alts, Literal* resolvedLit)
-    {
-      // Note: we need multiset matching for subsumption, but for subsumption resolution it is not necessary
-      return canBeMatchedImpl(base->literals(), base->length(), instance, alts, resolvedLit, resolvedLit == nullptr);
-    }
-
+    ~MLMatcher();
 
     /**
-     * Initialize matcher to the given match problem.
-     * The matcher will be valid after calling this function (unless it throws an exception).
+     * Find the next match.
+     * May only be called if the matcher is in a valid state.
+     * Return value:
+     * - True if a match was found. The matcher is now in a valid and matched state.
+     * - False if no more matches are possible. The matcher is now in an invalid state.
      */
-    static void initMatcher(
-      Literal** baseLits,
-      unsigned baseLen,
-      Clause* instance,
-      LiteralList** alts,  // TODO: note precondition: all literals in alts must appear in instance
-      Literal* resolvedLit,
-      bool multiset);
+    bool nextMatch();
 
     /**
-     * Return true if a match was found, false if no more matches are possible.
-     * May only be called if the matcher is valid.
-     * If false is returned, the matcher is invalidated after the call.
+     * Return the alts which are currently matched by some base literal.
+     * May only be called in a matched state (i.e., after nextMatch() has returned true).
      */
-    static bool nextMatch();
+    v_unordered_set<Literal*> getMatchedAlts();
 
-    // Return the alts which are currently matched by some base literal.
-    // May only be called after nextMatch() has returned true.
-    static v_unordered_set<Literal*> getMatchedAlts();
+    /**
+     * Return the variable bindings due to the current match.
+     * May only be called in a matched state (i.e., after nextMatch() has returned true).
+     */
+    v_unordered_map<unsigned, TermList> getBindings();
 
-    // Return the variable bindings due to the current match.
-    // May only be called after nextMatch() has returned true.
-    static v_unordered_map<unsigned, TermList> getBindings();
-
-    /*
-    class MLMatch
-    {
-      public:
-        MLMatch(MatchingData* md);
-        ~MLMatch();
-
-        MLMatch() = delete;
-        MLMatch(MLMatch const&) = delete;
-        MLMatch(MLMatch&&) = delete;
-        MLMatch& operator=(MLMatch const&) = delete;
-        MLMatch& operator=(MLMatch&&) = delete;
-
-        v_unordered_set<Literal*> getMatchedAlts();
-        v_unordered_map<unsigned, TermList> getBindings();
-      private:
-        MatchingData* md;
-    };
-
-    class MLMatchIterator
-    {
-      public:
-        MLMatchIterator(
-          Literal** baseLits,
-          unsigned baseLen,
-          Clause* instance,
-          LiteralList** alts,
-          Literal* resolvedLit,
-          bool multiset);
-
-        ~MLMatchIterator();
-
-        // Calling hasNext() or next() invalidates all previously returned MLMatch instances
-        bool hasNext();
-        MLMatch next();
-
-        MLMatchIterator() = delete;
-        MLMatchIterator(MLMatchIterator const&) = delete;
-        MLMatchIterator(MLMatchIterator&&) = delete;
-        MLMatchIterator& operator=(MLMatchIterator const&) = delete;
-        MLMatchIterator& operator=(MLMatchIterator&&) = delete;
-
-      private:
-        MatchingData* md;
-    };
-
-    // NOTE: only one MLMatchIterator and one MLMatch can be active at the same time.
-    static MLMatchIterator enumerateMatchings(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, bool multiset);
-    */
+    // Disallow copy/move because the internal implementation still uses pointers to the underlying storage.
+    // TODO: we *could* implement the move operations at least, by moving the unique_ptr.
+    MLMatcher() = delete;
+    MLMatcher(MLMatcher const&) = delete;
+    MLMatcher(MLMatcher&&) = delete;
+    MLMatcher& operator=(MLMatcher const&) = delete;
+    MLMatcher& operator=(MLMatcher&&) = delete;
 
   private:
-    // It's unclear if using outMatchedAlts/outBindings together with resolvedLit works properly, so this is private for now
-    static bool canBeMatchedImpl(
-      Literal** baseLits,
-      unsigned baseLen,
-      Clause* instance,
-      LiteralList** alts,  // TODO: note precondition: all literals in alts must appear in instance
-      Literal* resolvedLit,
-      bool multiset,
-      LiteralVector* outMatchedAlts = nullptr,
-      BindingsMap* outBindings = nullptr);
-    // TODO: Take something that's easier to use than LiteralLists** for alts.
-    // TODO: Since I do not actually need the correct order in outMatchedAlts, we can also construct a set and return that. Then we don't have to track original base indices anymore.
+    class Impl;
+    std::unique_ptr<Impl> m_impl;
+
+  public:
+    // Helper functions for compatibility to previous code. These are working with a shared static instance of MLMatcher::Impl.
+    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList** alts, Literal* resolvedLit)
+    {
+      return canBeMatched(base->literals(), base->length(), instance, alts, resolvedLit);
+    }
+
+    static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit)
+    {
+      return canBeMatchedImpl(baseLits, baseLen, instance, alts, resolvedLit, resolvedLit == nullptr);
+    }
+
+    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList** alts, bool multiset = false)
+    {
+      return canBeMatched(base->literals(), base->length(), instance, alts, multiset);
+    }
+
+    static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, bool multiset = false)
+    {
+      return canBeMatchedImpl(baseLits, baseLen, instance, alts, nullptr, multiset);
+    }
+
+  private:
+    static bool canBeMatchedImpl(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset);
 };
 
 

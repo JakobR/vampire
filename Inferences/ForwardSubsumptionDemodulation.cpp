@@ -7,7 +7,7 @@
 #include "Kernel/ColorHelper.hpp"
 #include "Kernel/EqHelper.hpp"
 #include "Kernel/Inference.hpp"
-#include "Kernel/MLMatcher2.hpp"
+#include "Kernel/MLMatcher.hpp"
 #include "Kernel/Matcher.hpp"
 #include "Kernel/Ordering.hpp"
 #include "Kernel/Signature.hpp"
@@ -437,7 +437,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
   // for each literal lit in cl:
   //    for each clause mcl such that lit \in mclσ for some substitution σ:
   //        for each equality literal eqLit in mcl:
-  //            for each substitution Θ such that (mcl \ {eqLit})Θ \subset cl:      // NOTE: currently only the first possible instantiation is checked (need to extend MLMatcher to be able to return all)
+  //            for each substitution Θ such that (mcl \ {eqLit})Θ \subset cl:
   //                for each lhs in DemodulationLHS(eqLit):
   //                    for each term t in (cl \ mclΘ):
   //                        if there is τ s.t. lhsΘτ == t
@@ -540,10 +540,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         // });
 
         // TODO: Do we need multiset matching here or can we get away without it? I think we don't need it.
-        // MLMatcher::initMatcher(baseLits.data(), baseLits.size(), cl, alts.data(), nullptr, false);
-        MLMatcher2 matcher(baseLits.data(), baseLits.size(), cl, alts.data(), false);
+        MLMatcher matcher(baseLits.data(), baseLits.size(), cl, alts.data(), false);
 
-        // if (MLMatcher::canBeMatched(baseLits.data(), baseLits.size(), cl, alts.data(), false, &matchedAlts, &bindings)) {
         while (matcher.nextMatch()) {  // TODO limit max number of matches
           std::cerr << "Subsumption (modulo eqLit) discovered! Now try to demodulate some term of cl in the unmatched literals." << std::endl;
 

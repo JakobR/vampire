@@ -205,7 +205,7 @@ bool isSubsumed(Clause* cl, CMStack& cmStore)
       continue;
     }
 
-    if(MLMatcher::canBeMatched(mcl,cl,clmatches->_matches,0)) {
+    if(MLMatcher::canBeMatched(mcl,cl,clmatches->_matches,true)) {
       return true;
     }
   }
@@ -375,7 +375,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
           continue;
         }
 
-        if (MLMatcher::canBeMatched(mcl, cl, cms->_matches, nullptr)
+        if (MLMatcher::canBeMatched(mcl, cl, cms->_matches, true)
             && ColorHelper::compatible(cl->color(), mcl->color())
             ) {
           // Done with subsumption (cl is subsumed, so replacement stays empty because we just delete cl)
