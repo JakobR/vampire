@@ -423,11 +423,17 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         });
 
         static MLMatcher matcher;
+        matcher.init(baseLits.data(), baseLits.size(), cl, alts.data());
 
-        // TODO: Do we need multiset matching here or can we get away without it? I think we don't need it.
-        matcher.init(baseLits.data(), baseLits.size(), cl, alts.data(), false);
+        static unsigned const maxMatches =
+          env.options->forwardSubsumptionDemodulationMaxMatches() == 0
+          ? std::numeric_limits<decltype(maxMatches)>::max()
+          : env.options->forwardSubsumptionDemodulationMaxMatches();
 
-        while (matcher.nextMatch()) {  // TODO limit max number of matches
+        for (unsigned numMatches = 0; numMatches < maxMatches; ++numMatches) {
+          if (!matcher.nextMatch()) {
+            break;
+          }
           std::cerr << "Subsumption (modulo eqLit) discovered! Now try to demodulate some term of cl in the unmatched literals." << std::endl;
 
           auto matchedAlts = matcher.getMatchedAlts();
@@ -584,7 +590,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
             } // for dli
           } // while (lhsIt.hasNext())
           std::cerr <<"end matching"<<std::endl;
-        } // while (nextMatch)
+        } // for (numMatches)
       } // for eqi
     } // while (rit.hasNext)
   } // for (li)

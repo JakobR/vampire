@@ -1182,6 +1182,12 @@ void Options::Options::init()
     _forwardSubsumptionDemodulation.tag(OptionTag::INFERENCES);
     _forwardSubsumptionDemodulation.setRandomChoices({"on","off"});
 
+    _forwardSubsumptionDemodulationMaxMatches = UnsignedOptionValue("forward_subsumption_demodulation_max_matches", "fsdmm", 3);
+    _forwardSubsumptionDemodulationMaxMatches.description = "Maximum number of multi-literal matches to consider in forward subsumption demodulation. 0 means to try all matches (until first success).";
+    _lookup.insert(&_forwardSubsumptionDemodulationMaxMatches);
+    _forwardSubsumptionDemodulationMaxMatches.tag(OptionTag::INFERENCES);
+    _forwardSubsumptionDemodulationMaxMatches.setRandomChoices({"0", "3"});
+
     _hyperSuperposition = BoolOptionValue("hyper_superposition","",false);
     _hyperSuperposition.description=
     "Generating inference that attempts to do several rewritings at once if it will eliminate literals of the original clause (now we aim just for elimination by equality resolution)";
