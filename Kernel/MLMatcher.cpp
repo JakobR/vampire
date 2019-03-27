@@ -28,8 +28,7 @@
 #include "Lib/Timer.hpp"
 #endif
 
-namespace
-{
+namespace {
 
 using namespace Lib;
 using namespace Kernel;
@@ -352,7 +351,7 @@ struct MatchingData {
 
 };
 
-}
+}  // namespace
 
 
 
@@ -371,12 +370,19 @@ class MLMatcher::Impl
     USE_ALLOCATOR(MLMatcher::Impl);
 
     Impl();
+    ~Impl() = default;
 
     void init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset);
     bool nextMatch();
 
     v_unordered_set<Literal*> getMatchedAlts();
     v_unordered_map<unsigned, TermList> getBindings();
+
+    // Disallow copy and move because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
+    Impl(Impl const&) = delete;
+    Impl(Impl&&) = delete;
+    Impl& operator=(Impl const&) = delete;
+    Impl& operator=(Impl&&) = delete;
 
   private:
     void initMatchingData(Literal** baseLits0, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit);
@@ -691,9 +697,15 @@ v_unordered_map<unsigned, TermList> MLMatcher::Impl::getBindings()
 }
 
 
-MLMatcher::MLMatcher(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
-  : m_impl{std::make_unique<MLMatcher::Impl>()}
+MLMatcher::MLMatcher()
+  : m_impl{nullptr}
+{ }
+
+void MLMatcher::init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
 {
+  if (!m_impl) {
+    m_impl = std::make_unique<MLMatcher::Impl>();
+  }
   m_impl->init(baseLits, baseLen, instance, alts, resolvedLit, multiset);
 }
 
@@ -718,12 +730,13 @@ v_unordered_map<unsigned, TermList> MLMatcher::getBindings()
 }
 
 
-}
-
-
 bool MLMatcher::canBeMatchedImpl(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
 {
-  static MLMatcher::Impl impl;
-  impl.init(baseLits, baseLen, instance, alts, resolvedLit, multiset);
-  return impl.nextMatch();
+  static MLMatcher::Impl matcher;
+  matcher.init(baseLits, baseLen, instance, alts, resolvedLit, multiset);
+  return matcher.nextMatch();
 }
+
+
+
+}  // namespace Kernel

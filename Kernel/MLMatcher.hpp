@@ -36,10 +36,6 @@ using namespace Lib;
 class MLMatcher
 {
   private:
-    // TODO:
-    // Maybe split construction and initialization.
-    // This allows users to keep a single instance around and reinitialize it whenever needed without having to reallocate memory.
-
     /**
      * Initializes the matcher to the given match problem.
      * The matcher will be in a valid (but unmatched) state.
@@ -48,7 +44,7 @@ class MLMatcher
      * - All literals in 'alts' must appear in 'instance'.
      * - If resolvedLit is not null, multiset must be false. (Hypothesis; not 100% sure if the matching algorithm breaks in that case)
      */
-    MLMatcher(Literal** baseLits,
+    void init(Literal** baseLits,
               unsigned baseLen,
               Clause* instance,
               LiteralList** alts,
@@ -56,41 +52,36 @@ class MLMatcher
               bool multiset);
 
   public:
-    MLMatcher(Literal** baseLits,
-              unsigned baseLen,
-              Clause* instance,
-              LiteralList** alts,
-              bool multiset)
-      : MLMatcher(baseLits, baseLen, instance, alts, nullptr, multiset = false)
-    { }
+    /**
+     * Constructs an MLMatcher and puts it in an invalid state.
+     */
+    MLMatcher();
 
-    MLMatcher(Clause* base,
-              Clause* instance,
-              LiteralList** alts,
-              bool multiset)
-      : MLMatcher(base->literals(), base->length(), instance, alts, multiset = false)
-    { }
+    void init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, bool multiset = false)
+    {
+      init(baseLits, baseLen, instance, alts, nullptr, multiset);
+    }
 
-    MLMatcher(Literal** baseLits,
-              unsigned baseLen,
-              Clause* instance,
-              LiteralList** alts,
-              Literal* resolvedLit)
-      : MLMatcher(baseLits, baseLen, instance, alts, resolvedLit, resolvedLit == nullptr)
+    void init(Clause* base, Clause* instance, LiteralList** alts, bool multiset = false)
+    {
+      init(base->literals(), base->length(), instance, alts, multiset);
+    }
+
+    void init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit)
+    {
       // NOTE: we need multiset matching for subsumption, but for subsumption resolution it is not necessary
-    { }
+      init(baseLits, baseLen, instance, alts, resolvedLit, resolvedLit == nullptr);
+    }
 
-    MLMatcher(Clause* base,
-              Clause* instance,
-              LiteralList** alts,
-              Literal* resolvedLit)
-      : MLMatcher(base->literals(), base->length(), instance, alts, resolvedLit)
-    { }
+    void init(Clause* base, Clause* instance, LiteralList** alts, Literal* resolvedLit)
+    {
+      init(base->literals(), base->length(), instance, alts, resolvedLit);
+    }
 
     ~MLMatcher();
 
     /**
-     * Find the next match.
+     * Finds the next match.
      * May only be called if the matcher is in a valid state.
      * Return value:
      * - True if a match was found. The matcher is now in a valid and matched state.
@@ -99,31 +90,31 @@ class MLMatcher
     bool nextMatch();
 
     /**
-     * Return the alts which are currently matched by some base literal.
+     * Returns the alts which are currently matched by some base literal.
      * May only be called in a matched state (i.e., after nextMatch() has returned true).
      */
     v_unordered_set<Literal*> getMatchedAlts();
 
     /**
-     * Return the variable bindings due to the current match.
+     * Returns the variable bindings due to the current match.
      * May only be called in a matched state (i.e., after nextMatch() has returned true).
      */
     v_unordered_map<unsigned, TermList> getBindings();
 
-    // Disallow copy/move because the internal implementation still uses pointers to the underlying storage.
-    // TODO: we *could* implement the move operations at least, by moving the unique_ptr.
-    MLMatcher() = delete;
+    // Disallow copy because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
     MLMatcher(MLMatcher const&) = delete;
-    MLMatcher(MLMatcher&&) = delete;
     MLMatcher& operator=(MLMatcher const&) = delete;
-    MLMatcher& operator=(MLMatcher&&) = delete;
+
+    // Moving works by just moving the pointer m_impl
+    MLMatcher(MLMatcher&&) = default;
+    MLMatcher& operator=(MLMatcher&&) = default;
 
   private:
     class Impl;
     std::unique_ptr<Impl> m_impl;
 
   public:
-    // Helper functions for compatibility to previous code. These are working with a shared static instance of MLMatcher::Impl.
+    // Helper functions for compatibility to previous code. These work with a shared static instance of MLMatcher::Impl.
     static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList** alts, Literal* resolvedLit)
     {
       return canBeMatched(base->literals(), base->length(), instance, alts, resolvedLit);
