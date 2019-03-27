@@ -253,6 +253,7 @@ class AccumulatingBinder
     AccumulatingBinder() { }
 
     // Initialize the current bindings (uncommitted) with the given argument
+    explicit
     AccumulatingBinder(BindingsMap&& initialBindings)
       : m_checkpoint()
       , m_current(std::move(initialBindings))
@@ -506,7 +507,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
         // Now we have to check if (mcl without eqLit) can be instantiated to some subset of cl
         vvector<Literal*> baseLits;
-        // vvector<std::unique_ptr<LiteralList, decltype(&LiteralList::destroy)>> alts_owned;  // stores the LiteralLists with the custom deleter to ensure cleanup
+        vvector<std::unique_ptr<LiteralList, decltype(&LiteralList::destroy)>> alts_owned;  // stores the LiteralLists with the custom deleter to ensure cleanup
         vvector<LiteralList*> alts;
         baseLits.reserve(mcl->length() - 1);
         alts.reserve(mcl->length() - 1);
@@ -518,95 +519,41 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
             // TODO: order alternatives, either smaller to larger or larger to smaller, or unordered
             LiteralMiniIndex::InstanceIterator instIt(miniIndex, (*mcl)[mi], false);
-            while(instIt.hasNext()) {
+            while (instIt.hasNext()) {
               Literal* matched = instIt.next();
               LiteralList::push(matched, l);
             }
 
-            // alts_owned.emplace_back(l, &LiteralList::destroy);
+            alts_owned.emplace_back(l, &LiteralList::destroy);
             alts.push_back(l);
           }
         }
         ASS_GE(baseLits.size(), 1);
         ASS_EQ(baseLits.size(), alts.size());
 
-        // Ensure cleanup of literal lists
-        // scope_guard alts_cleanup = [&](){
+        // // Ensure cleanup of literal lists
+        // ON_SCOPE_EXIT({
+        //   std::cerr << "destroying LiteralLists" << std::endl;
         //   for (LiteralList* ll : alts) {
-        //     LiteralList::destroy(ll);
+        //       LiteralList::destroy(ll);
         //   }
-        // };
-        ON_SCOPE_EXIT([&]() noexcept {
-            try {
-          std::cerr << "destroying LiteralLists" << std::endl;
-          for (LiteralList* ll : alts) {
-              LiteralList::destroy(ll);
-          }
-            } catch(...) {
-            }
-        }(););
+        // });
 
-        MLMatcher::LiteralVector matchedAlts; //(alts.size(), nullptr);
-        MLMatcher::BindingsMap bindings;
+        // TODO: Do we need multiset matching here or can we get away without it? I think we don't need it.
+        MLMatcher::initMatcher(baseLits.data(), baseLits.size(), cl, alts.data(), nullptr, false);
 
-        /*
-        std::cerr << "Calling MLMatcher::match with:\n";
-        for (unsigned j = 0; j < baseLits.size(); ++j) {
-          std::cerr << "\tbase = " << baseLits[j]->toString() << std::endl;
-
-          LiteralList* a = alts[j];
-          while (LiteralList::isNonEmpty(a)) {
-            std::cerr << "\t alt = " << a->head()->toString() << std::endl;
-            a = a->tail();
-          }
-        } // */
-
-        if (MLMatcher::canBeMatched(baseLits.data(), baseLits.size(), cl, alts.data(), false, &matchedAlts, &bindings)) {
-          // TODO: Do we need multiset matching here or can we get away without it? I think we don't need it.
-
-          // TODO:
-          // We have to look at *all* possible matchings if we want to ensure that we find possible applications!
-          // (Just enable Pg4c in the example above, marked with "(!)" to see why.)
-          // Because the substitution will be different and thus different demodulations are available.
-          // => look at multiple possible matches, but limit them (with an option; e.g. look at first 3 matches)
+        // if (MLMatcher::canBeMatched(baseLits.data(), baseLits.size(), cl, alts.data(), false, &matchedAlts, &bindings)) {
+        while (MLMatcher::nextMatch()) {  // TODO limit max number of matches
           std::cerr << "Subsumption (modulo eqLit) discovered! Now try to demodulate some term of cl in the unmatched literals." << std::endl;
-          ASS_EQ(matchedAlts.size(), baseLits.size());
-          std::cerr << "MLMatcher result:\n";
-          for (unsigned i = 0; i < baseLits.size(); ++i) {
-            std::cerr << "Matching:   base = " << baseLits[i]->toString() << std::endl;
-            std::cerr << "            inst = " << matchedAlts[i]->toString() << std::endl;
-          }
 
-          /*  // Previous way of recovering the bindings from the match
-          AccumulatingBinder<> binder;
-          std::cerr << "Recovering bindings... ";
-          for (unsigned i = 0; i < baseLits.size(); ++i) {
-            std::cerr << i << "... ";
-            ALWAYS(MatchingUtils::match(baseLits[i], matchedAlts[i], false, binder));
-            binder.commit();  // MatchingUtils::match calls reset() on the binder, but we want to keep the previous matches
-          }
-          std::cerr << "OK\n";
-          std::cerr << "Recovered Bindings:\n";
-          for (auto [ v, t ] : binder.bindings()) {
-            std::cerr << "\t" << TermList(v, false) << " -> " << t << std::endl;
-          }
-          std::cerr << "Bindings from MLMatcher:\n";
-          for (auto [ v, t ] : bindings) {
-            std::cerr << "\t" << TermList(v, false) << " -> " << t << std::endl;
-          }
+          auto matchedAlts = MLMatcher::getMatchedAlts();
 
-          ASS(bindings == binder.bindings());
-          // */
-
-          AccumulatingBinder binder{std::move(bindings)};
+          AccumulatingBinder binder{MLMatcher::getBindings()};
           binder.commit();
 
           std::cerr << "Literals in CΘ:\n";
-          // TODO for small size, a linear scan is probably faster than building a set
-          std::unordered_set<Literal*,std::hash<Literal*>,std::equal_to<Literal*>,STLAllocator<Literal*>> matchedLits;
           for (Literal* ctl : matchedAlts) {
             std::cerr << "\t" << ctl->toString() << std::endl;
-            matchedLits.insert(ctl);
           }
 
           // Now we try to demodulate some term in an unmatched literal with eqLit.
@@ -675,7 +622,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
               Literal* dlit = (*cl)[dli];  // literal to be demodulated
               std::cerr << "Try to demodulate dlit = cl[" << dli << "]: " << dlit->toString() << std::endl;
 
-              if (matchedLits.find(dlit) != matchedLits.end()) {
+              if (matchedAlts.find(dlit) != matchedAlts.end()) {
                 std::cerr << "\t(skipped because part of CΘ)" << std::endl;
                 continue;
               }
@@ -752,7 +699,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
               } // while (nvi.hasNext())
             } // for dli
           } // while (lhsIt.hasNext())
-        } // if (canBeMatched)
+          std::cerr <<"end matching"<<std::endl;
+        } // while (nextMatch)
       } // for eqi
     } // while (rit.hasNext)
   } // for (li)
