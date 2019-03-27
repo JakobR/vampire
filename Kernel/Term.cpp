@@ -745,7 +745,7 @@ Literal* Literal::complementaryLiteral(Literal* l)
  *  structure if all arguments are shared.
  * @since 07/01/2008 Torrevieja
  */
-Term* Term::create(Term* t,TermList* args)
+Term* Term::create(Term* t,TermList const* args)
 {
   CALL("Term::create/2");
   ASS_EQ(t->getPreDataSize(), 0);
@@ -770,7 +770,7 @@ Term* Term::create(Term* t,TermList* args)
 /** Create a new complex term, and insert it into the sharing
  *  structure if all arguments are shared.
  */
-Term* Term::create(unsigned function, unsigned arity, TermList* args)
+Term* Term::create(unsigned function, unsigned arity, TermList const* args)
 {
   CALL("Term::create/3");
   ASS_EQ(env.signature->functionArity(function), arity);
@@ -781,8 +781,8 @@ Term* Term::create(unsigned function, unsigned arity, TermList* args)
   bool share = true;
   TermList* ss = s->args();
 
-  TermList* curArg = args;
-  TermList* argStopper = args+arity;
+  TermList const* curArg = args;
+  TermList const* argStopper = args+arity;
   while (curArg!=argStopper) {
     *ss = *curArg;
     --ss;

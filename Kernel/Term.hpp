@@ -299,8 +299,8 @@ public:
 
   Term() throw();
   explicit Term(const Term& t) throw();
-  static Term* create(unsigned function, unsigned arity, TermList* args);
-  static Term* create(Term* t,TermList* args);
+  static Term* create(unsigned function, unsigned arity, TermList const* args);
+  static Term* create(Term* t,TermList const* args);
   static Term* createNonShared(Term* t,TermList* args);
   static Term* createNonShared(Term* t);
   static Term* cloneNonShared(Term* t);
