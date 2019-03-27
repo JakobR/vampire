@@ -19,7 +19,6 @@
 #include "Lib/STLAllocator.hpp"
 #include "Saturation/SaturationAlgorithm.hpp"
 #include <array>
-#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -77,22 +76,20 @@ TermBuilder operator+(TermBuilder const& t1, TermBuilder const& t2)
   return {Term::create2(pred_int_plus, t1.term(), t2.term())};
 }
 
-TermList build(TermBuilder tb)
+TermList term(TermBuilder tb)
 {
   return tb.term();
 }
 
-TermList build(Term* t)
+TermList term(Term* t)
 {
   return TermList(t);
 }
 
-TermList build(TermList t)
+TermList term(TermList t)
 {
   return t;
 }
-// TODO rename build(...) to term(...); because later we also want literal(...) and maybe even clause(...)
-
 template <unsigned Arity>
 class FnBuilder
 {
@@ -105,7 +102,7 @@ class FnBuilder
     template <typename...Args, typename std::enable_if_t<sizeof...(Args) == Arity>* = nullptr>
     TermBuilder operator()(Args... args) const
     {
-      std::array<TermList, Arity> const ts{build(args)...};
+      std::array<TermList, Arity> const ts{term(args)...};
       return {Term::create(fn, Arity, ts.data())};
     }
 
@@ -134,19 +131,19 @@ void ForwardSubsumptionDemodulation::testSomeStuff()
   {
     using namespace TermBuilder;
     TermList xpx = ( x + x ).term();
-    TermList xpxpy = build( x + (x + y) );
+    TermList xpxpy = term( x + (x + y) );
 
     // auto h = FnBuilder<1>(env.signature->addFreshFunction(1, "h"));
     // auto g = FnBuilder<2>(env.signature->addFreshFunction(2, "g"));
     auto h = FnBuilder<1>::fresh("h");
     auto g = FnBuilder<2>::fresh("g");
 
-    auto hx = build( h(x) );
-    auto hhx = build( h(h(x)) );
-    auto hhx2 = build( h(hx) );
+    auto hx = term( h(x) );
+    auto hhx = term( h(h(x)) );
+    auto hhx2 = term( h(hx) );
 
-    auto gx = build( g(x, x) );
-    auto ggh = build( g(gx, h(x)) );
+    auto gx = term( g(x, x) );
+    auto ggh = term( g(gx, h(x)) );
   }
 
   unsigned csym = env.signature->addFreshFunction(0, "c");
