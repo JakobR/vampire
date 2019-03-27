@@ -133,6 +133,9 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
       bestVal=currVal;
     }
   }
+  // TODO(JR): only for debugging FSD, to be removed later
+  // std::cerr << "FwSubsSimplifyingLiteralIndex::handleClause: best = " << best->toString() << std::endl;
+  // std::cerr << "                                                c = " << c->toNiceString() << std::endl;
   handleLiteral(best, c, adding);
 }
 

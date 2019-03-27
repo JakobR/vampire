@@ -29,6 +29,10 @@
 
 #include "Index.hpp"
 
+namespace Inferences {  // TODO(JR): only for debugging FSD, to be removed later
+  class ForwardSubsumptionDemodulation;
+}
+
 namespace Indexing {
 
 class LiteralIndex
@@ -102,6 +106,7 @@ public:
   : LiteralIndex(is) {};
 protected:
   void handleClause(Clause* c, bool adding);
+  friend class Inferences::ForwardSubsumptionDemodulation;  // TODO(JR): only for debugging FSD, to be removed later
 };
 
 class UnitClauseLiteralIndex
