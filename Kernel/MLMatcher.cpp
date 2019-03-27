@@ -204,11 +204,12 @@ struct MatchingData {
   std::vector<unsigned, STLAllocator<unsigned>> originalBaseIndex;
   unsigned timestamp = 0;
 
-  unsigned getRemainingInCurrent(unsigned bi)
+  unsigned getRemainingInCurrent(unsigned bi) const
   {
     return remaining->get(bi,bi);
   }
-  unsigned getAltRecordIndex(unsigned bi, unsigned alti)
+
+  unsigned getAltRecordIndex(unsigned bi, unsigned alti) const
   {
     return static_cast<unsigned>(altBindings[bi][alti][varCnts[bi]].content());
   }
@@ -220,7 +221,7 @@ struct MatchingData {
    * @b altBindings[b2Index][i2AltIndex] .
    */
   bool compatible(unsigned b1Index, TermList* i1Bindings,
-                  unsigned b2Index, unsigned i2AltIndex, pair<int,int>* iinfo)
+                  unsigned b2Index, unsigned i2AltIndex, pair<int,int>* iinfo) const
   {
     CALL("MatchingData::compatible");
 
@@ -304,7 +305,7 @@ struct MatchingData {
     return res;
   }
 
-  bool isInitialized(unsigned bIndex) {
+  bool isInitialized(unsigned bIndex) const {
     return boundVarNums[bIndex];
   }
 
@@ -375,8 +376,8 @@ class MLMatcher::Impl
     void init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset);
     bool nextMatch();
 
-    v_unordered_set<Literal*> getMatchedAlts();
-    v_unordered_map<unsigned, TermList> getBindings();
+    v_unordered_set<Literal*> getMatchedAlts() const;
+    v_unordered_map<unsigned, TermList> getBindings() const;
 
     // Disallow copy and move because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
     Impl(Impl const&) = delete;
@@ -653,9 +654,9 @@ bool MLMatcher::Impl::nextMatch()
   return true;
 }
 
-v_unordered_set<Literal*> MLMatcher::Impl::getMatchedAlts()
+v_unordered_set<Literal*> MLMatcher::Impl::getMatchedAlts() const
 {
-  MatchingData* md = &s_matchingData;
+  MatchingData const* const md = &s_matchingData;
   ASS(!md->resolvedLit);  // Untested if using this together with resolvedLit works correctly
 
   v_unordered_set<Literal*> matchedAlts;
@@ -671,9 +672,9 @@ v_unordered_set<Literal*> MLMatcher::Impl::getMatchedAlts()
   return matchedAlts;
 }
 
-v_unordered_map<unsigned, TermList> MLMatcher::Impl::getBindings()
+v_unordered_map<unsigned, TermList> MLMatcher::Impl::getBindings() const
 {
-  MatchingData* md = &s_matchingData;
+  MatchingData const* const md = &s_matchingData;
   ASS(!md->resolvedLit);  // Untested if using this together with resolvedLit works correctly
 
   v_unordered_map<unsigned, TermList> bindings;
@@ -717,13 +718,13 @@ bool MLMatcher::nextMatch()
   return m_impl->nextMatch();
 }
 
-v_unordered_set<Literal*> MLMatcher::getMatchedAlts()
+v_unordered_set<Literal*> MLMatcher::getMatchedAlts() const
 {
   ASS(m_impl);
   return m_impl->getMatchedAlts();
 }
 
-v_unordered_map<unsigned, TermList> MLMatcher::getBindings()
+v_unordered_map<unsigned, TermList> MLMatcher::getBindings() const
 {
   ASS(m_impl);
   return m_impl->getBindings();
