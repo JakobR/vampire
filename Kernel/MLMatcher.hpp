@@ -29,9 +29,6 @@
 #include "Clause.hpp"
 #include "Forwards.hpp"
 #include "Lib/STL.hpp"
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 namespace Kernel {
 

@@ -235,6 +235,7 @@ set(VAMPIRE_KERNEL_SOURCES
     Kernel/Matcher.cpp
     Kernel/MaximalLiteralSelector.cpp
     Kernel/MLMatcher.cpp
+    Kernel/MLMatcher2.cpp
     Kernel/MLVariant.cpp
     Kernel/Ordering.cpp
     Kernel/Ordering_Equality.cpp

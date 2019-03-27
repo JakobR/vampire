@@ -7,7 +7,7 @@
 #include "Kernel/ColorHelper.hpp"
 #include "Kernel/EqHelper.hpp"
 #include "Kernel/Inference.hpp"
-#include "Kernel/MLMatcher.hpp"
+#include "Kernel/MLMatcher2.hpp"
 #include "Kernel/Matcher.hpp"
 #include "Kernel/Ordering.hpp"
 #include "Kernel/Signature.hpp"
@@ -250,7 +250,7 @@ class AccumulatingBinder
 
     // using BindingsMap = std::unordered_map<Key, T, Hash, KeyEqual, Allocator>;
     using Var = unsigned int;
-    using BindingsMap = MLMatcher::BindingsMap;
+    using BindingsMap = v_unordered_map<Var, TermList>;
 
     AccumulatingBinder() { }
 
@@ -540,15 +540,16 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         // });
 
         // TODO: Do we need multiset matching here or can we get away without it? I think we don't need it.
-        MLMatcher::initMatcher(baseLits.data(), baseLits.size(), cl, alts.data(), nullptr, false);
+        // MLMatcher::initMatcher(baseLits.data(), baseLits.size(), cl, alts.data(), nullptr, false);
+        MLMatcher2 matcher(baseLits.data(), baseLits.size(), cl, alts.data(), false);
 
         // if (MLMatcher::canBeMatched(baseLits.data(), baseLits.size(), cl, alts.data(), false, &matchedAlts, &bindings)) {
-        while (MLMatcher::nextMatch()) {  // TODO limit max number of matches
+        while (matcher.nextMatch()) {  // TODO limit max number of matches
           std::cerr << "Subsumption (modulo eqLit) discovered! Now try to demodulate some term of cl in the unmatched literals." << std::endl;
 
-          auto matchedAlts = MLMatcher::getMatchedAlts();
+          auto matchedAlts = matcher.getMatchedAlts();
 
-          AccumulatingBinder binder{MLMatcher::getBindings()};
+          AccumulatingBinder binder{matcher.getBindings()};
           binder.commit();
 
           std::cerr << "Literals in CΘ:\n";
