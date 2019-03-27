@@ -64,7 +64,7 @@ class ScopeGuard final
 #define ON_SCOPE_EXIT_CONCAT(X,Y) ON_SCOPE_EXIT_CONCAT_HELPER(X,Y)
 
 #define ON_SCOPE_EXIT(stmt) \
-  ScopeGuard ON_SCOPE_EXIT_CONCAT(on_scope_exit_guard_on_line_,__LINE__)([&]() { stmt; });
+  ScopeGuard ON_SCOPE_EXIT_CONCAT(on_scope_exit_guard_on_line_,__LINE__){[&]() { stmt; }};
 
 
 }
