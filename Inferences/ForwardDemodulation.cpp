@@ -128,6 +128,7 @@ bool ForwardDemodulation::perform(Clause* cl, Clause*& replacement, ClauseIterat
 	  continue;
 	}
 
+        // TODO why? -> ask giles or andrei
 	TermList rhs=EqHelper::getOtherEqualitySide(qr.literal,qr.term);
 	TermList rhsS;
 	if(!qr.substitution->isIdentityOnQueryWhenResultBound()) {
@@ -185,6 +186,8 @@ bool ForwardDemodulation::perform(Clause* cl, Clause*& replacement, ClauseIterat
 	      //     t = t1 \/ C
 	      //where t > t1 and s = t > C
 	      continue;
+              // TODO add to fsd (controlled by the option)
+              // because s = t > s = t1 \/ C  =>  not redundant
 	    }
 	  }
 	} // if (toplevelCheck)

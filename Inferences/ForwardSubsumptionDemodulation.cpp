@@ -14,8 +14,10 @@
 #include "Kernel/Sorts.hpp"
 #include "Kernel/SubstHelper.hpp"
 #include "Kernel/Term.hpp"
+#include "Lib/ScopeGuard.hpp"
 #include "Lib/STLAllocator.hpp"
 #include "Saturation/SaturationAlgorithm.hpp"
+#include <array>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -44,12 +46,105 @@ void ForwardSubsumptionDemodulation::detach()
 
 
 
+namespace TermBuilder
+{
+class TermBuilder
+{
+  public:
+
+    TermBuilder(Term* t)
+      : t{t}
+    { }
+
+    TermBuilder(TermList t)
+      : t{t}
+    { }
+
+    TermList term() const
+    {
+      return t;
+    }
+
+  private:
+    TermList t;
+};
+
+TermBuilder operator+(TermBuilder const& t1, TermBuilder const& t2)
+{
+  unsigned const pred_int_plus = env.signature->getInterpretingSymbol(Theory::INT_PLUS);
+  return {Term::create2(pred_int_plus, t1.term(), t2.term())};
+}
+
+TermList build(TermBuilder tb)
+{
+  return tb.term();
+}
+
+TermList build(Term* t)
+{
+  return TermList(t);
+}
+
+TermList build(TermList t)
+{
+  return t;
+}
+
+template <unsigned Arity>
+class FnBuilder
+{
+  public:
+    FnBuilder(unsigned fn)
+      : fn{fn}
+    { }
+
+    // Args may contain values of types TermBuilder, Term*, and TermList (also mixed)
+    template <typename...Args, typename std::enable_if_t<sizeof...(Args) == Arity>* = nullptr>
+    TermBuilder operator()(Args... args) const
+    {
+      std::array<TermList, Arity> const ts{build(args)...};
+      return {Term::create(fn, Arity, ts.data())};
+    }
+
+    static FnBuilder fresh(char const* prefix, char const* suffix = nullptr)
+    {
+      unsigned fn = env.signature->addFreshFunction(Arity, prefix, suffix);
+      return {fn};
+    }
+
+  private:
+    unsigned fn;
+};
+
+static TermBuilder const x = TermBuilder(TermList(0, false));
+static TermBuilder const y = TermBuilder(TermList(1, false));
+static TermBuilder const z = TermBuilder(TermList(2, false));
+}
+
 void ForwardSubsumptionDemodulation::testSomeStuff()
 {
   CALL("ForwardSubsumptionDemodulation::testSomeStuff");
 
   std::cerr << "testSomeStuff" << std::endl;
-  return;
+  // return;
+
+  {
+    using namespace TermBuilder;
+    TermList xpx = ( x + x ).term();
+    TermList xpxpy = build( x + (x + y) );
+
+    // auto h = FnBuilder<1>(env.signature->addFreshFunction(1, "h"));
+    // auto g = FnBuilder<2>(env.signature->addFreshFunction(2, "g"));
+    auto h = FnBuilder<1>::fresh("h");
+    auto g = FnBuilder<2>::fresh("g");
+
+    auto hx = build( h(x) );
+    auto hhx = build( h(h(x)) );
+    auto hhx2 = build( h(hx) );
+
+    auto gx = build( g(x, x) );
+    auto ggh = build( g(gx, h(x)) );
+  }
 
   unsigned csym = env.signature->addFreshFunction(0, "c");
   unsigned f = env.signature->addFreshFunction(1, "f");
@@ -100,7 +195,7 @@ void ForwardSubsumptionDemodulation::testSomeStuff()
     LiteralStack lits;
     lits.push(Qfffc);
     lits.push(Pg2c);
-    // lits.push(Pg4c);  // (!)
+    lits.push(Pg4c);  // (!)
     lits.push(Ry);
     return Clause::fromStack(lits, Unit::AXIOM, new Inference(Inference::THEORY));
   }();
@@ -125,35 +220,6 @@ void ForwardSubsumptionDemodulation::testSomeStuff()
 }
 
 
-/*
-class scope_guard
-{
-  public:
-    template <typename Callable>
-    scope_guard(Callable&& f)
-      : f(std::forward<Callable>(f))
-    { }
-
-    ~scope_guard()
-    {
-      try {
-        f();
-      }
-      catch(...) {
-        // Destructor must not throw
-        // (actually, it just must not throw during stack unwinding, i.e., if another exception was thrown.
-        //  We could check that with std::uncaught_exceptions)
-        std::terminate();  // ???
-      }
-    }
-
-  private:
-    // better use a class template instead of std::function to avoid memory allocation,
-    // and add some helper function make_scope_guard<...>(...) to help with type inference
-    std::function<void()> f;
-}; // */
-
-
 class RequestClauseAux
 {
   public:
@@ -170,34 +236,36 @@ class RequestClauseAux
 
 
 
-template< typename Key = unsigned int
-        , typename T = TermList
-        , typename Hash = std::hash<Key>
-        , typename KeyEqual = std::equal_to<Key>
-        , typename Allocator = STLAllocator<std::pair<const Key, T>>
-        >
+// template< typename Key = unsigned int
+//         , typename T = TermList
+//         , typename Hash = std::hash<Key>
+//         , typename KeyEqual = std::equal_to<Key>
+//         , typename Allocator = STLAllocator<std::pair<const Key, T>>
+//         >
 class AccumulatingBinder
 {
   public:
 
-    using BindingMap = std::unordered_map<Key, T, Hash, KeyEqual, Allocator>;
+    // using BindingsMap = std::unordered_map<Key, T, Hash, KeyEqual, Allocator>;
+    using Var = unsigned int;
+    using BindingsMap = MLMatcher::BindingsMap;
 
     AccumulatingBinder() { }
 
     // Initialize the current bindings (uncommitted) with the given argument
-    AccumulatingBinder(BindingMap&& initialBindings)
+    AccumulatingBinder(BindingsMap&& initialBindings)
       : m_checkpoint()
       , m_current(std::move(initialBindings))
     { }
 
-    bool bind(Key var, T term)
+    bool bind(Var var, TermList term)
     {
       // If the variable is already bound, it must be bound to the same term.
       auto [ it, inserted ] = m_current.insert({var, term});
       return inserted || (it->second == term);
     }
 
-    void specVar(Key var, T term)
+    void specVar(Var var, TermList term)
     {
       ASSERTION_VIOLATION;
     }
@@ -218,13 +286,13 @@ class AccumulatingBinder
       m_checkpoint.clear();
     }
 
-    BindingMap const& bindings() const {
+    BindingsMap const& bindings() const {
       return m_current;
     }
 
     // Makes objects of this class work as applicator for substitution
     // (as defined in Kernel/SubstHelper.hpp)
-    TermList apply(unsigned int var) const {
+    TermList apply(Var var) const {
       auto it = m_current.find(var);
       if (it != m_current.end()) {
         return it->second;
@@ -238,12 +306,17 @@ class AccumulatingBinder
       return SubstHelper::apply(t, *this, noSharing);
     }
 
+    Literal* applyTo(Literal* l) const {
+      return SubstHelper::apply(l, *this);
+    }
+
   private:
-    BindingMap m_checkpoint;
-    BindingMap m_current;
+    BindingsMap m_checkpoint;
+    BindingsMap m_current;
 };
 
 
+/* // unnecessary
 class AccumulatingBinder2
 {
   public:
@@ -333,7 +406,7 @@ class AccumulatingBinder2
     BindingsMap m_bindings;
     Generation m_current_generation = 0;
     bool m_dirty = false;
-};
+};  // */
 
 
 template <typename T> using vvector = std::vector<T, STLAllocator<T>>;
@@ -341,6 +414,33 @@ template <typename T> using vvector = std::vector<T, STLAllocator<T>>;
 bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
 {
   CALL("ForwardSubsumptionDemodulation::perform");
+
+  //     mcl                cl
+  // vvvvvvvvvv      vvvvvvvvvvvvvvvv
+  // eqLit         matched      /-- only look for a term to demodulate in this part!
+  // vvvvv           vv    vvvvvvvvvv
+  // l = r \/ C      CΘ \/ L[lΘ] \/ D
+  // --------------------------------
+  //       CΘ \/ L[rΘ] \/ D
+  //
+  // whenever lΘ > rΘ.
+  // also   l = r \/ C   <   CΘ \/ L[lΘ] \/ D    (to preserve completeness (redundancy))
+  //
+  //
+  // if l > r then lΘ > rΘ
+  //
+  // Pseudocode:
+  //
+  // Input: cl
+  //
+  // for each literal lit in cl:
+  //    for each clause mcl such that lit \in mclσ for some substitution σ:
+  //        for each equality literal eqLit in mcl:
+  //            for each substitution Θ such that (mcl \ {eqLit})Θ \subset cl:      // NOTE: currently only the first possible instantiation is checked (need to extend MLMatcher to be able to return all)
+  //                for each lhs in DemodulationLHS(eqLit):
+  //                    for each term t in (cl \ mclΘ):
+  //                        if there is τ s.t. lhsΘτ == t
+  //                        then replace t in cl by rhsΘτ and return the modified clause.     // NOTE: all occurrences of t in the first literal of (cl\...) where t is found are replaced.
 
   std::cerr << "\n\nEntering ForwardSubsumptionDemodulation::perform with\n\tcl = " << cl->toNiceString() << std::endl;
   // The subsumption check in ForwardSubsumptionAndResolution has two stages:
@@ -355,12 +455,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
   Ordering& ordering = _salg->getOrdering();
 
-  // discard all previous aux values (so after this, hasAux() returns false for any clause).
-  // Clause::requestAux();
-  // scope_guard on_exit([]() {
-  //   std::cerr << "on_exit" << std::endl;
-  //   Clause::releaseAux();
-  // });
+  // Discards all previous aux values (so after this, hasAux() returns false for any clause).
   RequestClauseAux aux;
 
   // Initialize miniIndex with literals in the clause cl
@@ -373,7 +468,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
     std::cerr << "Literal cl[" << li << "]: " << lit->toString() << std::endl;
 
     SLQueryResultIterator rit = _fwIndex->getGeneralizations(lit, false, false);
-    while(rit.hasNext()) {
+    while (rit.hasNext()) {
       SLQueryResult res = rit.next();
       Clause* mcl = res.clause;
 
@@ -386,7 +481,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
       }
       mcl->setAux(nullptr);  // we only need existence and don't care about the actual value
 
-      ASS_GE(mcl->length(), 2);
+      ASS_GE(mcl->length(), 2);  // property of the index we use
 
       if (!ColorHelper::compatible(cl->color(), mcl->color())) {
         continue;
@@ -394,15 +489,24 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
       // Find an equality in mcl
       for (unsigned eqi = 0; eqi < mcl->length(); ++eqi) {
-        Literal* eqlit = (*mcl)[eqi];
-        if (!eqlit->isEquality()) {
+        Literal* eqLit = (*mcl)[eqi];  // Equality literal for demodulation
+        if (!eqLit->isEquality()) {
+          continue;
+        }
+        if (eqLit->isNegative()) {
           continue;
         }
 
-        std::cerr << "Found equality in mcl: " << eqlit->toString() << std::endl;
+        std::cerr << "Found equality in mcl: " << eqLit->toString() << std::endl;
 
-        // Now we have to check if (mcl without eqlit) can be instantiated to some subset of cl
+
+        // TODO:
+        // We can do a pre-check of the ordering like in FwDem (see "preordered")
+
+
+        // Now we have to check if (mcl without eqLit) can be instantiated to some subset of cl
         vvector<Literal*> baseLits;
+        // vvector<std::unique_ptr<LiteralList, decltype(&LiteralList::destroy)>> alts_owned;  // stores the LiteralLists with the custom deleter to ensure cleanup
         vvector<LiteralList*> alts;
         baseLits.reserve(mcl->length() - 1);
         alts.reserve(mcl->length() - 1);
@@ -412,33 +516,51 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
             LiteralList* l = nullptr;
 
+            // TODO: order alternatives, either smaller to larger or larger to smaller, or unordered
             LiteralMiniIndex::InstanceIterator instIt(miniIndex, (*mcl)[mi], false);
             while(instIt.hasNext()) {
               Literal* matched = instIt.next();
               LiteralList::push(matched, l);
             }
 
+            // alts_owned.emplace_back(l, &LiteralList::destroy);
             alts.push_back(l);
           }
         }
         ASS_GE(baseLits.size(), 1);
         ASS_EQ(baseLits.size(), alts.size());
 
+        // Ensure cleanup of literal lists
+        // scope_guard alts_cleanup = [&](){
+        //   for (LiteralList* ll : alts) {
+        //     LiteralList::destroy(ll);
+        //   }
+        // };
+        ON_SCOPE_EXIT([&]() noexcept {
+            try {
+          std::cerr << "destroying LiteralLists" << std::endl;
+          for (LiteralList* ll : alts) {
+              LiteralList::destroy(ll);
+          }
+            } catch(...) {
+            }
+        }(););
+
         MLMatcher::LiteralVector matchedAlts; //(alts.size(), nullptr);
         MLMatcher::BindingsMap bindings;
 
-        // std::cerr << "Calling MLMatcher::match with:\n";
-        // for (unsigned j = 0; j < baseLits.size(); ++j) {
-        //   std::cerr << "\tbase = " << baseLits[j]->toString() << std::endl;
+        /*
+        std::cerr << "Calling MLMatcher::match with:\n";
+        for (unsigned j = 0; j < baseLits.size(); ++j) {
+          std::cerr << "\tbase = " << baseLits[j]->toString() << std::endl;
 
-        //   LiteralList* a = alts[j];
-        //   while (LiteralList::isNonEmpty(a)) {
-        //     std::cerr << "\t alt = " << a->head()->toString() << std::endl;
-        //     a = a->tail();
-        //   }
-        // }
+          LiteralList* a = alts[j];
+          while (LiteralList::isNonEmpty(a)) {
+            std::cerr << "\t alt = " << a->head()->toString() << std::endl;
+            a = a->tail();
+          }
+        } // */
 
-        // If yes, we try to demodulate some of the *other* literals of cl with eqlit
         if (MLMatcher::canBeMatched(baseLits.data(), baseLits.size(), cl, alts.data(), false, &matchedAlts, &bindings)) {
           // TODO: Do we need multiset matching here or can we get away without it? I think we don't need it.
 
@@ -446,7 +568,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
           // We have to look at *all* possible matchings if we want to ensure that we find possible applications!
           // (Just enable Pg4c in the example above, marked with "(!)" to see why.)
           // Because the substitution will be different and thus different demodulations are available.
-          std::cerr << "Subsumption (modulo eqlit) discovered! Now try to demodulate some term of cl in the unmatched literals." << std::endl;
+          // => look at multiple possible matches, but limit them (with an option; e.g. look at first 3 matches)
+          std::cerr << "Subsumption (modulo eqLit) discovered! Now try to demodulate some term of cl in the unmatched literals." << std::endl;
           ASS_EQ(matchedAlts.size(), baseLits.size());
           std::cerr << "MLMatcher result:\n";
           for (unsigned i = 0; i < baseLits.size(); ++i) {
@@ -454,7 +577,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
             std::cerr << "            inst = " << matchedAlts[i]->toString() << std::endl;
           }
 
-          // TODO: We need the substitution from this match. Can we extract this more cheaply from the match data?
+          /*  // Previous way of recovering the bindings from the match
           AccumulatingBinder<> binder;
           std::cerr << "Recovering bindings... ";
           for (unsigned i = 0; i < baseLits.size(); ++i) {
@@ -473,34 +596,34 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
           }
 
           ASS(bindings == binder.bindings());
+          // */
 
-          // TODO: initialize like this instead
-          AccumulatingBinder<> bbb(std::move(bindings));
-          bbb.commit();
+          AccumulatingBinder binder{std::move(bindings)};
+          binder.commit();
 
           std::cerr << "Literals in CΘ:\n";
           // TODO for small size, a linear scan is probably faster than building a set
-          std::unordered_set<Literal*,std::hash<Literal*>,std::equal_to<Literal*>,STLAllocator<Literal*>> blup;
+          std::unordered_set<Literal*,std::hash<Literal*>,std::equal_to<Literal*>,STLAllocator<Literal*>> matchedLits;
           for (Literal* ctl : matchedAlts) {
             std::cerr << "\t" << ctl->toString() << std::endl;
-            blup.insert(ctl);
+            matchedLits.insert(ctl);
           }
 
-          // Now we try to demodulate some term by using eqlit
+          // Now we try to demodulate some term in an unmatched literal with eqLit.
           // IMPORTANT: only look at literals that are not being matched to mcl (the rule is unsound otherwise)!
           //
           //     mcl                cl
           // vvvvvvvvvv      vvvvvvvvvvvvvvvv
-          // eqlit         matched      /-- only look for a term to demodulate in this part!
+          // eqLit         matched      /-- only look for a term to demodulate in this part!
           // vvvvv           vv    vvvvvvvvvv
           // l = r \/ C      CΘ \/ L[lΘ] \/ D
           // --------------------------------
           //       CΘ \/ L[rΘ] \/ D
 
-          ASS_EQ(eqlit->arity(), 2);
-          TermList t0 = *eqlit->nthArgument(0);
-          TermList t1 = *eqlit->nthArgument(1);
-          std::cerr << "eqlit:        t0 = " << t0.toString() << std::endl;
+          ASS_EQ(eqLit->arity(), 2);
+          TermList t0 = *eqLit->nthArgument(0);
+          TermList t1 = *eqLit->nthArgument(1);
+          std::cerr << "eqLit:        t0 = " << t0.toString() << std::endl;
           std::cerr << "              t1 = " << t1.toString() << std::endl;
 
           // Apply current substitution to t0 and t1
@@ -511,6 +634,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
           std::cerr << "substituted:  s0 = " << s0.toString() << std::endl;
           std::cerr << "              s1 = " << s1.toString() << std::endl;
 
+          Literal* eqLitS = binder.applyTo(eqLit);
+
           TermList r0 = t0;
           TermList r1 = t1;
           // TODO Assertion violation when KBOForEPR is used as ordering
@@ -518,7 +643,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
           //    Condition in file /Users/jakob/code/vampire/Kernel/KBOForEPR.cpp, line 103 violated:
           //    !tl1.isTerm() || tl1.term()->arity()==0
           // Maybe use ordering.getEqualityArgumentOrder instead (like in FwDem)
-          auto order = ordering.compare(s0, s1);
+          auto order = ordering.getEqualityArgumentOrder(eqLitS);
+          // auto order = ordering.compare(s0, s1);
           if (order == Ordering::GREATER) {
             // do nothing
           } else if (order == Ordering::LESS) {
@@ -534,89 +660,101 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
           std::cerr << "ordered:      r0 = " << r0.toString() << std::endl;
           std::cerr << "              r1 = " << r1.toString() << std::endl;
           ASS_EQ(ordering.compare(binder.applyTo(r0), binder.applyTo(r1)), Ordering::GREATER);
+          // TODO: Is this check useless? But how do we know in which direction to demodulate?
+          // Maybe use EqHelper::getDemodulationLHSIterator(eqLit, true, ordering, options)
 
-          DHSet<TermList> attempted;  // Terms we already attempted to demodulate
+          auto lhsIt = EqHelper::getDemodulationLHSIterator(eqLit, true, ordering, *env.options);
+          while (lhsIt.hasNext()) {
+            TermList lhs = lhsIt.next();
+            TermList rhs = EqHelper::getOtherEqualitySide(eqLit, lhs);
 
-          for (unsigned dli = 0; dli < cl->length(); ++dli) {
-            Literal* dlit = (*cl)[dli];
-            std::cerr << "Try to demodulate dlit = cl[" << dli << "]: " << dlit->toString() << std::endl;
 
-            if (blup.find(dlit) != blup.end()) {
-              std::cerr << "\t(skipped because part of CΘ)" << std::endl;
-              continue;
-            }
+            DHSet<TermList> attempted;  // Terms we already attempted to demodulate
 
-            NonVariableIterator nvi(dlit);
-            while (nvi.hasNext()) {
-              TermList trm = nvi.next();
-              std::cerr << "Term: " << trm.toString();
-              if (!attempted.insert(trm)) {
-                //We have already tried to demodulate the term @b trm and did not
-                //succeed (otherwise we would have returned from the function).
-                //If we have tried the term @b trm, we must have tried to
-                //demodulate also its subterms, so we can skip them too.
-                nvi.right();
-                std::cerr << "\t(skipped because already checked)" << std::endl;
+            for (unsigned dli = 0; dli < cl->length(); ++dli) {
+              Literal* dlit = (*cl)[dli];  // literal to be demodulated
+              std::cerr << "Try to demodulate dlit = cl[" << dli << "]: " << dlit->toString() << std::endl;
+
+              if (matchedLits.find(dlit) != matchedLits.end()) {
+                std::cerr << "\t(skipped because part of CΘ)" << std::endl;
                 continue;
               }
-              std::cerr << std::endl;
 
-              // TODO: Demodulation has a lot more checks which I don't understand yet. We probably need some of them here too
+              NonVariableIterator nvi(dlit);
+              while (nvi.hasNext()) {
+                TermList trm = nvi.next();
+                std::cerr << "Term: " << trm.toString();
+                if (!attempted.insert(trm)) {
+                  //We have already tried to demodulate the term @b trm and did not
+                  //succeed (otherwise we would have returned from the function).
+                  //If we have tried the term @b trm, we must have tried to
+                  //demodulate also its subterms, so we can skip them too.
+                  nvi.right();
+                  std::cerr << "\t(skipped because already checked)" << std::endl;
+                  continue;
+                }
+                std::cerr << std::endl;
 
-              // auto applicator = [&binder = std::as_const(binder)](unsigned int var) {
-              // };
+                // TODO: Demodulation has a lot more checks which I don't understand yet. We probably need some of them here too
+                // TODO: do at least the sort-check like this:
+                // unsigned eqSort = SortHelper::getEqualityArgumentSort(eqLit);
+                // if(querySort!=eqSort) {
+                //   continue;
+                // }
 
-              binder.reset();  // resets to last checkpoint (here: to state after subsumption check)
-              if (MatchingUtils::matchTerms(r0, trm, binder)) {
-                TermList newTrm = binder.applyTo(r1);
-                std::cerr << "\t Match! replace with: " << newTrm.toString() << std::endl;
+                // TermList rhs=EqHelper::getOtherEqualitySide(qr.literal,qr.term);
 
-                Literal* newLit = EqHelper::replace(dlit, trm, newTrm);
-                std::cerr << "\t newLit: " << newLit->toString() << std::endl;
+                binder.reset();  // resets to last checkpoint (here: to state after subsumption check)
+                if (MatchingUtils::matchTerms(r0, trm, binder)) {
+                  TermList newTrm = binder.applyTo(r1);    // TODO consider naming it rhsS like in demodulation (equality is lhs = rhs, substituted is lhsS = rhsS)
 
-                if (EqHelper::isEqTautology(newLit)) {
-                  std::cerr << "\t TAUTOLOGY (discard result)" << std::endl;
-                  env.statistics->forwardSubsumptionDemodulationsToEqTaut++;
+                  auto trmOrder = ordering.compare(trm, newTrm);
+                  if (trmOrder != Ordering::GREATER) {
+                    std::cerr << "\t Match prevented by ordering: " << newTrm.toString() << "     (trmOrder = " << trmOrder << ")" << std::endl;
+                    continue;
+                  }
+                  std::cerr << "\t Match! replacing term with: " << newTrm.toString() << std::endl;
+
+                  Literal* newLit = EqHelper::replace(dlit, trm, newTrm);
+                  std::cerr << "\t newLit: " << newLit->toString() << std::endl;
+
+                  if (EqHelper::isEqTautology(newLit)) {
+                    std::cerr << "\t TAUTOLOGY (discard result)" << std::endl;
+                    env.statistics->forwardSubsumptionDemodulationsToEqTaut++;
+                    premises = pvi(getSingletonIterator(mcl));
+                    replacement = nullptr;
+                    // Clause reduction was successful but we don't set the replacement (because it is a tautology)
+                    return true;
+                  }
+
+                  Inference* inference = new Inference2(Inference::FORWARD_SUBSUMPTION_DEMODULATION, cl, mcl);
+                  Unit::InputType inputType = std::max(cl->inputType(), mcl->inputType());
+
+                  Clause* newCl = new(cl->length()) Clause(cl->length(), inputType, inference);
+
+                  for (unsigned i = 0; i < cl->length(); ++i) {
+                    if (i == dli) {
+                      (*newCl)[i] = newLit;
+                    } else {
+                      (*newCl)[i] = (*cl)[i];
+                    }
+                  }
+
+                  newCl->setAge(cl->age());
+                  env.statistics->forwardSubsumptionDemodulations++;
+
                   premises = pvi(getSingletonIterator(mcl));
-                  // Clause reduction was successful but we don't set the replacement (because it is a tautology)
+                  replacement = newCl;
+                  std::cerr << "\t FwSubsDem replacement: " << replacement->toNiceString() << std::endl;
                   return true;
                 }
 
-                Inference* inf = new Inference2(Inference::FORWARD_SUBSUMPTION_DEMODULATION, cl, mcl);
-                Unit::InputType inpType = (Unit::InputType)Int::max(cl->inputType(), mcl->inputType());
-
-                Clause* res = new(cl->length()) Clause(cl->length(), inpType, inf);
-
-                for (unsigned i = 0; i < cl->length(); ++i) {
-                  if (i == dli) {
-                    (*res)[i] = newLit;
-                  } else {
-                    (*res)[i] = (*cl)[i];
-                  }
-                }
-
-                res->setAge(cl->age());
-                env.statistics->forwardSubsumptionDemodulations++;
-
-                premises = pvi(getSingletonIterator(mcl));
-                replacement = res;
-                std::cerr << "\t FwSubsDem replacement: " << replacement->toNiceString() << std::endl;
-                return true;
-              }
-
-            } // while (nvi.hasNext())
-          } // for dli
-
+              } // while (nvi.hasNext())
+            } // for dli
+          } // while (lhsIt.hasNext())
         } // if (canBeMatched)
-
-        for (LiteralList* ll : alts) {
-          LiteralList::destroy(ll);
-        }
-
       } // for eqi
-
     } // while (rit.hasNext)
-
   } // for (li)
 
   return false;
