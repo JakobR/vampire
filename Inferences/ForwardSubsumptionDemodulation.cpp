@@ -35,6 +35,9 @@ void ForwardSubsumptionDemodulation::attach(SaturationAlgorithm* salg)
   ForwardSimplificationEngine::attach(salg);
   _fwIndex.attach(salg);
 
+  _preorderedOnly = false;  // TODO: might add an option for this like in forward demodulation
+  _performRedundancyCheck = getOptions().demodulationRedundancyCheck();
+
   testSomeStuff();  // TODO: for debugging, to be removed later
 }
 
@@ -318,8 +321,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
   //
   // Input: cl
   //
-  // for each literal lit in cl:
-  //    for each clause mcl such that lit \in mclσ for some substitution σ:
+  // for each literal sqlit in cl:
+  //    for each clause mcl such that sqlit \in mclσ for some substitution σ:
   //        for each equality literal eqLit in mcl:
   //            for each substitution Θ such that (mcl \ {eqLit})Θ \subset cl:
   //                for each lhs in DemodulationLHS(eqLit):
@@ -348,12 +351,12 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
   LiteralMiniIndex miniIndex(cl);
 
 
-  for (unsigned li = 0; li < cl->length(); ++li) {
-    Literal* lit = (*cl)[li];
+  for (unsigned sqli = 0; sqli < cl->length(); ++sqli) {
+    Literal* subsQueryLit = (*cl)[sqli];  // this literal is only used to query the subsumption index
 
-    std::cerr << "Literal cl[" << li << "]: " << lit->toString() << std::endl;
+    std::cerr << "Literal cl[" << sqli << "]: " << subsQueryLit->toString() << std::endl;
 
-    SLQueryResultIterator rit = _fwIndex->getGeneralizations(lit, false, false);
+    SLQueryResultIterator rit = _fwIndex->getGeneralizations(subsQueryLit, false, false);
     while (rit.hasNext()) {
       SLQueryResult res = rit.next();
       Clause* mcl = res.clause;
@@ -382,13 +385,19 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         if (eqLit->isNegative()) {
           continue;
         }
+        ASS(eqLit->isEquality());
+        ASS(eqLit->isPositive());
+
+        unsigned const eqSort = SortHelper::getEqualityArgumentSort(eqLit);
 
         std::cerr << "Found equality in mcl: " << eqLit->toString() << std::endl;
 
-
-        // TODO:
-        // We can do a pre-check of the ordering like in FwDem (see "preordered")
-
+        Ordering::Result argOrder = ordering.getEqualityArgumentOrder(eqLit);
+        bool preordered = (argOrder == Ordering::LESS) || (argOrder == Ordering::GREATER);
+        std::cerr << "\t preordered = " << preordered << std::endl;
+        if (_preorderedOnly && !preordered) {
+          continue;
+        }
 
         // Now we have to check if (mcl without eqLit) can be instantiated to some subset of cl
         v_vector<Literal*> baseLits;
@@ -402,6 +411,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
             LiteralList* l = nullptr;
 
             // TODO: order alternatives, either smaller to larger or larger to smaller, or unordered
+            // to do this, can we simply order the literals inside the miniIndex? (in each equivalence class w.r.t. literal header)
             LiteralMiniIndex::InstanceIterator instIt(miniIndex, (*mcl)[mi], false);
             while (instIt.hasNext()) {
               Literal* matched = instIt.next();
@@ -426,9 +436,9 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         matcher.init(baseLits.data(), baseLits.size(), cl, alts.data());
 
         static unsigned const maxMatches =
-          env.options->forwardSubsumptionDemodulationMaxMatches() == 0
+          getOptions().forwardSubsumptionDemodulationMaxMatches() == 0
           ? std::numeric_limits<decltype(maxMatches)>::max()
-          : env.options->forwardSubsumptionDemodulationMaxMatches();
+          : getOptions().forwardSubsumptionDemodulationMaxMatches();
 
         for (unsigned numMatches = 0; numMatches < maxMatches; ++numMatches) {
           if (!matcher.nextMatch()) {
@@ -457,56 +467,31 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
           // --------------------------------
           //       CΘ \/ L[rΘ] \/ D
 
-          ASS_EQ(eqLit->arity(), 2);
-          TermList t0 = *eqLit->nthArgument(0);
-          TermList t1 = *eqLit->nthArgument(1);
-          std::cerr << "eqLit:        t0 = " << t0.toString() << std::endl;
-          std::cerr << "              t1 = " << t1.toString() << std::endl;
-
-          // Apply current substitution to t0 and t1
-          // TermList s0 = SubstHelper::apply(t0, std::as_const(binder));
-          // TermList s1 = SubstHelper::apply(t1, std::as_const(binder));
-          TermList s0 = binder.applyTo(t0);
-          TermList s1 = binder.applyTo(t1);
-          std::cerr << "substituted:  s0 = " << s0.toString() << std::endl;
-          std::cerr << "              s1 = " << s1.toString() << std::endl;
-
-          Literal* eqLitS = binder.applyTo(eqLit);
-
-          TermList r0 = t0;
-          TermList r1 = t1;
-          // TODO Assertion violation when KBOForEPR is used as ordering
-          // It says:
-          //    Condition in file /Users/jakob/code/vampire/Kernel/KBOForEPR.cpp, line 103 violated:
-          //    !tl1.isTerm() || tl1.term()->arity()==0
-          // Maybe use ordering.getEqualityArgumentOrder instead (like in FwDem)
-          auto order = ordering.getEqualityArgumentOrder(eqLitS);
-          // auto order = ordering.compare(s0, s1);
-          if (order == Ordering::GREATER) {
-            // do nothing
-          } else if (order == Ordering::LESS) {
-            std::swap(r0, r1);
-          } else {
-            std::cerr << "No clear ordering between s0 and s1 (order = " << order << "); skipping demodulation." << std::endl;
-            ASS(order == Ordering::GREATER_EQ
-                || order == Ordering::LESS_EQ
-                || order == Ordering::EQUAL
-                || order == Ordering::INCOMPARABLE)
-            continue;
+          bool postMLMatchOrdered = preordered;
+          if (!preordered) {
+            Literal* eqLitS = binder.applyTo(eqLit);
+            auto argOrder = ordering.getEqualityArgumentOrder(eqLitS);
+            postMLMatchOrdered = (argOrder == Ordering::LESS) || (argOrder == Ordering::GREATER);
           }
-          std::cerr << "ordered:      r0 = " << r0.toString() << std::endl;
-          std::cerr << "              r1 = " << r1.toString() << std::endl;
-          ASS_EQ(ordering.compare(binder.applyTo(r0), binder.applyTo(r1)), Ordering::GREATER);
-          // TODO: Is this check useless? But how do we know in which direction to demodulate?
-          // Maybe use EqHelper::getDemodulationLHSIterator(eqLit, true, ordering, options)
+          std::cerr << "\t postMLMatchOrdered = " << postMLMatchOrdered << std::endl;
 
-          auto lhsIt = EqHelper::getDemodulationLHSIterator(eqLit, true, ordering, *env.options);
+          auto lhsIt = EqHelper::getDemodulationLHSIterator(eqLit, true, ordering, getOptions());
           while (lhsIt.hasNext()) {
             TermList lhs = lhsIt.next();
             TermList rhs = EqHelper::getOtherEqualitySide(eqLit, lhs);
 
+#if VDEBUG
+            if (preordered) {
+              if (argOrder == Ordering::LESS) {
+                ASS_EQ(rhs, *eqLit->nthArgument(0));
+              } else {
+                ASS_EQ(rhs, *eqLit->nthArgument(1));
+              }
+            }
+#endif
 
-            DHSet<TermList> attempted;  // Terms we already attempted to demodulate
+            static DHSet<TermList> attempted;  // Terms we already attempted to demodulate
+            attempted.reset();
 
             for (unsigned dli = 0; dli < cl->length(); ++dli) {
               Literal* dlit = (*cl)[dli];  // literal to be demodulated
@@ -519,13 +504,13 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
               NonVariableIterator nvi(dlit);
               while (nvi.hasNext()) {
-                TermList trm = nvi.next();
-                std::cerr << "Term: " << trm.toString();
-                if (!attempted.insert(trm)) {
-                  //We have already tried to demodulate the term @b trm and did not
-                  //succeed (otherwise we would have returned from the function).
-                  //If we have tried the term @b trm, we must have tried to
-                  //demodulate also its subterms, so we can skip them too.
+                TermList lhsS = nvi.next();  // lhsS because it will be matched against lhs
+                std::cerr << "Term: " << lhsS.toString();
+                if (!attempted.insert(lhsS)) {
+                  // We have already tried to demodulate the term lhsS and did not
+                  // succeed (otherwise we would have returned from the function).
+                  // If we have tried the term lhsS, we must have tried to
+                  // demodulate also its subterms, so we can skip them too.
                   nvi.right();
                   std::cerr << "\t(skipped because already checked)" << std::endl;
                   continue;
@@ -534,26 +519,57 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
                 // TODO: Demodulation has a lot more checks which I don't understand yet. We probably need some of them here too
                 // TODO: do at least the sort-check like this:
-                // unsigned eqSort = SortHelper::getEqualityArgumentSort(eqLit);
                 // if(querySort!=eqSort) {
                 //   continue;
                 // }
 
-                // TermList rhs=EqHelper::getOtherEqualitySide(qr.literal,qr.term);
-
                 binder.reset();  // resets to last checkpoint (here: to state after subsumption check)
-                if (MatchingUtils::matchTerms(r0, trm, binder)) {
-                  TermList newTrm = binder.applyTo(r1);    // TODO consider naming it rhsS like in demodulation (equality is lhs = rhs, substituted is lhsS = rhsS)
+                if (MatchingUtils::matchTerms(lhs, lhsS, binder)) {
+                  TermList rhsS = binder.applyTo(rhs);
+                  ASS_EQ(lhsS, binder.applyTo(lhs));
 
-                  auto trmOrder = ordering.compare(trm, newTrm);
-                  if (trmOrder != Ordering::GREATER) {
-                    std::cerr << "\t Match prevented by ordering: " << newTrm.toString() << "     (trmOrder = " << trmOrder << ")" << std::endl;
+                  auto trmOrder = ordering.compare(lhsS, rhsS);
+                  if (!postMLMatchOrdered && trmOrder != Ordering::GREATER) {
+                    std::cerr << "\t Match prevented by ordering: " << rhsS.toString() << "     (trmOrder = " << trmOrder << ")" << std::endl;
                     continue;
                   }
-                  std::cerr << "\t Match! replacing term with: " << newTrm.toString() << std::endl;
 
-                  Literal* newLit = EqHelper::replace(dlit, trm, newTrm);
+                  bool performToplevelCheck = _performRedundancyCheck && dlit->isEquality() && (lhsS == *dlit->nthArgument(0) || lhsS == *dlit->nthArgument(1));
+                  if (performToplevelCheck) {
+                    TermList other = EqHelper::getOtherEqualitySide(dlit, lhsS);
+                    Ordering::Result tord = ordering.compare(rhsS, other);
+                    if (tord != Ordering::LESS && tord != Ordering::LESS_EQ) {
+                      Literal* eqLitS = binder.applyTo(eqLit);
+                      /** TODO: what literals do I have to include in the check here exactly?
+                      bool isMax = true;
+                      for (unsigned li2 = 0; li2 < cl->length(); li2++) {
+                        if (dli == li2) {
+                          continue;
+                        }
+                        Literal* lit2 = (*cl)[li2];
+                        if(ordering.compare(eqLitS, (*cl)[li2]) == Ordering::LESS) {
+                          isMax=false;
+                          break;
+                        }
+                      }
+                      if(isMax) {
+                        //The demodulation is this case which doesn't preserve completeness:
+                        //s = t     s = t1 \/ C
+                        //---------------------
+                        //     t = t1 \/ C
+                        //where t > t1 and s = t > C
+                        continue;
+                      }
+                      */
+                    }
+                  }  // if (performToplevelCheck)
+
+                  std::cerr << "\t Match! replacing term with: " << rhsS.toString() << std::endl;
+
+                  Literal* newLit = EqHelper::replace(dlit, lhsS, rhsS);
                   std::cerr << "\t newLit: " << newLit->toString() << std::endl;
+                  ASS_EQ(ordering.compare(lhsS, rhsS), Ordering::GREATER);
+                  ASS_EQ(ordering.compare(dlit, newLit), Ordering::GREATER);
 
                   if (EqHelper::isEqTautology(newLit)) {
                     std::cerr << "\t TAUTOLOGY (discard result)" << std::endl;

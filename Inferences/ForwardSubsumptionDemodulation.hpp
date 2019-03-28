@@ -100,6 +100,9 @@ class ForwardSubsumptionDemodulation
   private:
     RequestedIndex<FwSubsSimplifyingLiteralIndex, FW_SUBSUMPTION_SUBST_TREE> _fwIndex;
 
+    bool _preorderedOnly;
+    bool _performRedundancyCheck;
+
     void testSomeStuff();
 };
 
