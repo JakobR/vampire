@@ -70,7 +70,7 @@
 #include "Inferences/URResolution.hpp"
 #include "Inferences/Instantiation.hpp"
 #include "Inferences/TheoryInstAndSimp.hpp"
-#include "Inferences/TheoryRuleAttempt.hpp"  // !!!
+#include "Inferences/TheoryRuleTransitivity.hpp"  // !!!
 #include "Inferences/Induction.hpp"
 
 #include "Saturation/ExtensionalityClauseContainer.hpp"
@@ -1387,7 +1387,7 @@ SaturationAlgorithm* SaturationAlgorithm::createFromOptions(Problem& prb, const 
   }
   if (opt.theoryRules()) {
     // TODO: Check if problem has arithmetic before adding theory rules
-    gie->addFront(new TransitivityRuleExperiment());
+    gie->addFront(new TheoryRuleTransitivity());
   }
 #if VZ3
   if (opt.theoryInstAndSimp() != Shell::Options::TheoryInstSimp::OFF){

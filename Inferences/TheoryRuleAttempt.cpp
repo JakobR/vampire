@@ -92,6 +92,11 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 {
     CALL("TransitivityRuleExperiment::generateClauses");
 
+    // NOTE: this rule is somehow bugged,
+    // because transitivity_rule_disjunctive/inference_99.in.smt2 does not terminate.
+    // But who cares, the new version in TheoryRuleTransitivity.cpp works fine.
+    ASSERTION_VIOLATION;
+
     // Plan:
     // 1. Match given clause against "x < y".
     // 2. Search active clause set for a clause of form "y < z".
@@ -101,6 +106,9 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // std::cerr << "Given: " << premise->toString() << std::endl;
 
     static unsigned const pred_int_less = env.signature->getInterpretingSymbol(Theory::INT_LESS);
+
+    unsigned maxVar = premise->maxVar();
+    ASS_L(maxVar, std::numeric_limits<decltype(maxVar)>::max());
 
     auto it1 = premise->getSelectedLiteralIterator();
 
@@ -115,25 +123,22 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
     // NOTE:
     // This is easy here, since we just need to compare the outermost predicate symbol.
     // The question is how we can properly generalize this matching for other theory rules.
-    // TODO: Check how the instance check of LiteralIndex->getInstances() works. We can probably reuse that.
+    // => Use Kernel::MatchingUtils for instance check
     auto it3 = getFilteredIterator(it2, [](Literal* lit) -> bool {
 
         // TermList x(0, false);
         // TermList y(1, false);
         // Literal* query = Literal::create2(pred_int_less, true, x, y);
 
-        // It probably does not make sense to create a new substitution tree just for matching here.
-        // We could either use lambdas with ad-hoc checks as here, or implement our own function for instance checking.
+        // Kernel::MatchinUtils::isInstance(template, lit);
 
-        // isInstance(template, lit);
         return lit->isPositive()
             && (lit->functor() == pred_int_less);
     });
 
-
     // it3: selected literals of premise of the form "t1 < t2"
     // it4 looks for matches "t2 < t3"
-    auto it4 = getMappingIteratorKnownRes<VirtualIterator<std::pair<Literal*,SLQueryResult>>>(it3, [this](Literal* lit) {
+    auto it4 = getMappingIteratorKnownRes<VirtualIterator<std::pair<Literal*,SLQueryResult>>>(it3, [this, maxVar](Literal* lit) {
         // Here: lit = $less(t1, t2).
         // Goal: match against $less(t3, t4) such that there is a unification of t2 and t3.
         TermList const t2 = *lit->nthArgument(1);
@@ -164,17 +169,18 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
 
         // Find a variable that does not appear in t2
-        std::cerr << "\tFormulaVarIterator on " << t2.toString() << ": [";
-        FormulaVarIterator fvi(&t2);
-        int maxVar = -1;
-        while (fvi.hasNext()) {
-            auto fv = fvi.next();
-            std::cerr << " " << fv;
-            if (fv > maxVar) {
-                maxVar = fv;
-            }
-        }
-        std::cerr << " ]" << std::endl;
+        // NOTE: this is wrong! the variable must not appear anywhere in the premise! Because we need to perform substitution on the whole clause and not just t2
+        // std::cerr << "\tFormulaVarIterator on " << t2.toString() << ": [";
+        // FormulaVarIterator fvi(&t2);
+        // int maxVar = -1;
+        // while (fvi.hasNext()) {
+        //     auto fv = fvi.next();
+        //     std::cerr << " " << fv;
+        //     if (fv > maxVar) {
+        //         maxVar = fv;
+        //     }
+        // }
+        // std::cerr << " ]" << std::endl;
 
         // Create "template" literal for matching
         // t1 < t2
@@ -250,7 +256,9 @@ ClauseIterator TransitivityRuleExperiment::generateClauses(Clause* premise)
 
         (*res)[0] = lit;
 
-        // TODO: do we have to obey some invariant on the order of literals in clauses?
+        // Question: do we have to obey some invariant on the order of literals in clauses?
+        // => not here. But after literal selection, the selected literals are at the beginning.
+
         int next = 1;
         for (int i = 0; i < len1; ++i) {
             Literal* curr = (*cl1)[i];

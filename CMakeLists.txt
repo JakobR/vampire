@@ -419,6 +419,8 @@ set(VAMPIRE_INFERENCE_SOURCES
     # Inferences/TheoryInstAndSimp.cpp  # ???
     Inferences/TheoryRuleAttempt.cpp
     Inferences/TheoryRuleAttempt.hpp
+    Inferences/TheoryRuleTransitivity.cpp
+    Inferences/TheoryRuleTransitivity.hpp
     Inferences/ForwardSubsumptionDemodulation.cpp
     Inferences/ForwardSubsumptionDemodulation.hpp
     )
