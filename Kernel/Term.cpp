@@ -140,6 +140,10 @@ bool TermList::isSafe() const
 {
   CALL("TermList::isSafe");
 
+  // TODO(JR): special variables also can't shared... should we check for that or do I misunderstand what special vars are, and they should never be used by a user anyways.
+  // if (isSpecialVar()) {
+  //   return false;
+  // }
   return isVar() || term()->shared();
 }
 
