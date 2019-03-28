@@ -66,6 +66,14 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
   // So we can use the polarity of the selected literal to decide
   // whether we are in the first or in the second rule.
 
+  // TODO
+  // The above note is wrong.
+  // With this version, the example transitivity_rule_disjunctive finally works.
+  // But the other two examples, transitivity_rule and transitivity_rule_subst are now broken!
+  // Because of this, I suspect that the relevant inference is never applied.
+  // I'm pretty sure this depends on the order the clauses are selected.
+  // => change the rule so we don't lose potential application
+
   // We need a new variable relative to the premise
   // so we can later apply the substitution without messing up u and D.
   unsigned const maxVar = premise->maxVar();
