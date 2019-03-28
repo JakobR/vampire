@@ -4,6 +4,7 @@
 #include "Kernel/Inference.hpp"
 #include "Kernel/Signature.hpp"
 #include "Lib/PairUtils.hpp"
+#include "Lib/STL.hpp"
 #include "Indexing/IndexManager.hpp"
 #include "Saturation/SaturationAlgorithm.hpp"
 
@@ -302,11 +303,10 @@ Clause* IrreflexivityISE::simplify(Clause* c)
     CALL("IrreflexivityISE::simplify");
     // t < t
 
-    std::cerr << "IrreflexivityISE::simplify on " << c->toString() << std::endl;
+    // std::cerr << "IrreflexivityISE::simplify on " << c->toString() << std::endl;
 
     static unsigned const pred_int_less = env.signature->getInterpretingSymbol(Theory::INT_LESS);
-    // std::vector<int> skip;   // TODO: should probably use vampire's own types instead of std::vector? (because of custom allocator)
-    Stack<int> skip;
+    v_vector<int> skip;
 
     for (int i = 0; i < c->length(); ++i) {
         Literal const* lit = c->literals()[i];
@@ -315,15 +315,15 @@ Clause* IrreflexivityISE::simplify(Clause* c)
             && lit->functor() == pred_int_less
             && *lit->nthArgument(0) == *lit->nthArgument(1)) {
 
-            skip.push(i);
+            skip.push_back(i);
         }
     }
 
-    std::cerr << "\tSkip literals with indices: [ ";
-    for (int k : skip) {
-        std::cerr << k << ' ';
-    }
-    std::cerr << "]" << std::endl;
+    // std::cerr << "\tSkip literals with indices: [ ";
+    // for (int k : skip) {
+    //     std::cerr << k << ' ';
+    // }
+    // std::cerr << "]" << std::endl;
 
     if (skip.size() > 0) {
         int newLen = c->length() - skip.size();
@@ -343,7 +343,7 @@ Clause* IrreflexivityISE::simplify(Clause* c)
 
         int i = 0;
         int j = 0;
-        skip.push(c->length());  // the following loop copies literals before every skipped index. We add c->length() to make it also copy the final part.
+        skip.push_back(c->length());  // the following loop copies literals before every skipped index. We add c->length() to make it also copy the final part.
         for (int k : skip) {
             int n = k - i;
             // std::cerr << i << ' ' << j << ' ' << k << ' ' << n << std::endl;
@@ -355,7 +355,7 @@ Clause* IrreflexivityISE::simplify(Clause* c)
         ASS_EQ(j, newLen);
         ASS_EQ(i, c->length() + 1);
 
-        std:: cerr << "\tres = " << res->toString() << std::endl;
+        // std:: cerr << "\tres = " << res->toString() << std::endl;
         return res;
     }
     else {
@@ -367,6 +367,8 @@ Clause* IrreflexivityISE::simplify(Clause* c)
 bool IrreflexivityFSE::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
 {
     CALL("IrreflexivityFSE::perform");
+
+    ASSERTION_VIOLATION;  // just make sure this isn't used.
 
     std::cerr << "IrreflexivityFSE::perform on " << cl->toString() << std::endl;
 
