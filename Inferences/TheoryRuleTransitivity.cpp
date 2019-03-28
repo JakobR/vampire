@@ -103,11 +103,11 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
     Literal* queryLit = nullptr;
     if (lit->isPositive()) {
       // template literal: x < t
-      queryLit = Literal::create2(pred_int_less, true, newVar, t);
+      queryLit = Literal::create2(lit->functor(), true, newVar, t);
     } else {
       ASS(lit->isNegative());
       // template literal: t < x
-      queryLit = Literal::create2(pred_int_less, true, t, newVar);
+      queryLit = Literal::create2(lit->functor(), true, t, newVar);
     }
     ASS(queryLit);
 
@@ -127,7 +127,7 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
   auto it4 = getFlattenedIterator(pvi(it3));
 
   // Build the result clauses
-  auto it5 = getMappingIterator(it4, [this, premise](std::pair<Literal*, SLQueryResult> arg) {
+  auto it5 = getMappingIterator(it4, [premise](std::pair<Literal*, SLQueryResult> arg) {
     CALL("TheoryRuleTransitivity::generateClauses::it5");
     Literal* lit = arg.first;             // t < u  or  ~(t < u)
 
@@ -149,13 +149,13 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
       // rθ < uθ
       TermList r = *rLit->nthArgument(0);
       TermList u = *lit->nthArgument(1);
-      newLit = Literal::create2(pred_int_less, true, theta->applyToResult(r), theta->applyToQuery(u));
+      newLit = Literal::create2(lit->functor(), true, theta->applyToResult(r), theta->applyToQuery(u));
     } else {
       ASS(lit->isNegative());
       // ~(sθ < uθ)
       TermList s = *rLit->nthArgument(1);
       TermList u = *lit->nthArgument(1);
-      newLit = Literal::create2(pred_int_less, false, theta->applyToResult(s), theta->applyToQuery(u));
+      newLit = Literal::create2(lit->functor(), false, theta->applyToResult(s), theta->applyToQuery(u));
     }
     ASS(newLit);
 
