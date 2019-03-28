@@ -128,10 +128,18 @@ bool ForwardDemodulation::perform(Clause* cl, Clause*& replacement, ClauseIterat
 	  continue;
 	}
 
-        // TODO why? -> ask giles or andrei
 	TermList rhs=EqHelper::getOtherEqualitySide(qr.literal,qr.term);
 	TermList rhsS;
 	if(!qr.substitution->isIdentityOnQueryWhenResultBound()) {
+          // The problem here is that the "substitution" actually consists of two substitutions: one for the query, one for the result.
+          // We asked for a generalization, so the query substitution should actually be the identity.
+          // However, apparently some matching algorithms can introduce new variables on the query side.
+          // Since our clause cl contains other literals which may share variables with the demodulated term,
+          // we must be careful and normalize the variables.
+          //
+          // We now use a CodeTreeTIS for the DemodulationLHSIndex, and the CodeTreeSubstitution always returns true for isIdentityOnQueryWhenResultBound();
+          // so currently this branch is never entered.
+          ASSERTION_VIOLATION;
 	  //When we apply substitution to the rhs, we get a term, that is
 	  //a variant of the term we'd like to get, as new variables are
 	  //produced in the substitution application.
