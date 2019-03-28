@@ -238,6 +238,8 @@ struct MatchingData {
 
   bool bindAlt(unsigned bIndex, unsigned altIndex)
   {
+    CALL("MatchingData::bindAlt");
+
     TermList* curBindings=altBindings[bIndex][altIndex];
     for(unsigned i=bIndex+1; i<len; i++) {
       if(!isInitialized(i)) {
@@ -266,6 +268,8 @@ struct MatchingData {
 
   pair<int,int>* getIntersectInfo(unsigned b1, unsigned b2)
   {
+    CALL("MatchingData::getIntersectInfo");
+
     ASS_L(b1, b2);
     pair<int,int>* res=intersections->get(b2,b1);
     if( res ) {
@@ -389,16 +393,15 @@ class MLMatcher::Impl
     void initMatchingData(Literal** baseLits0, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit);
 
   private:
+    // Backing storage for the pointers in s_matchingData, used and set up in initMatchingData
     DArray<Literal*> s_baseLits;
     DArray<LiteralList*> s_altsArr;
-
     DArray<unsigned> s_varCnts;
     DArray<unsigned*> s_boundVarNums;
     DArray<TermList**> s_altPtrs;
     TriangularArray<unsigned> s_remaining;
     TriangularArray<pair<int,int>* > s_intersections;
     DArray<unsigned> s_nextAlts;
-
     DArray<unsigned> s_boundVarNumData;
     DArray<TermList*> s_altBindingPtrs;
     DArray<TermList> s_altBindingsData;
@@ -406,11 +409,13 @@ class MLMatcher::Impl
 
     MatchingData s_matchingData;
 
+    // For backtracking support
     DArray<unsigned> s_matchRecord;
     unsigned s_currBLit;
     int s_counter;
     bool s_multiset;
 };
+
 
 MLMatcher::Impl::Impl()
   : s_baseLits{32}
@@ -427,6 +432,7 @@ MLMatcher::Impl::Impl()
   , s_intersectionData{128}
   , s_matchRecord{32}
 { }
+
 
 void MLMatcher::Impl::initMatchingData(Literal** baseLits0, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit)
 {
@@ -551,9 +557,10 @@ void MLMatcher::Impl::initMatchingData(Literal** baseLits0, unsigned baseLen, Cl
   s_matchingData.currentAlts.resize(baseLen);
 }
 
+
 void MLMatcher::Impl::init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
 {
-  CALL("MLMatcherImpl::init");
+  CALL("MLMatcher::Impl::init");
 
   if (resolvedLit) {
     // NOTE(JR): I think using resolvedLit together with multiset does not work since there's only two match records in that case.
@@ -576,6 +583,7 @@ void MLMatcher::Impl::init(Literal** baseLits, unsigned baseLen, Clause* instanc
   //   The match record tracks for each literal of the instance which base literal is matched to it.
   //   This means it is only necessary for multiset matching (because each instance literal can only be used once for matching).
   //   (Except when resolvedLit is set... then there's only two match records? whatever, I don't care about that case right now)
+  ASS_EQ(s_matchRecord.size(), matchRecordLen);
 
   s_matchingData.nextAlts[0] = 0;
   s_currBLit = 0;
@@ -586,6 +594,7 @@ void MLMatcher::Impl::init(Literal** baseLits, unsigned baseLen, Clause* instanc
 
 bool MLMatcher::Impl::nextMatch()
 {
+  CALL("MLMatcher::Impl::nextMatch");
   MatchingData* const md = &s_matchingData;
 
   while (true) {
@@ -654,10 +663,15 @@ bool MLMatcher::Impl::nextMatch()
   return true;
 }
 
+
 v_unordered_set<Literal*> MLMatcher::Impl::getMatchedAlts() const
 {
   MatchingData const* const md = &s_matchingData;
-  ASS(!md->resolvedLit);  // Untested if using this together with resolvedLit works correctly
+
+  // We cannot extract the matched alts if resolvedLit is set
+  // because in that case getAltRecordIndex will always return 0 or 1.
+  // See createLiteralBindings(), where this value is set up.
+  ASS(!md->resolvedLit);
 
   v_unordered_set<Literal*> matchedAlts;
   matchedAlts.reserve(md->len);
@@ -672,10 +686,13 @@ v_unordered_set<Literal*> MLMatcher::Impl::getMatchedAlts() const
   return matchedAlts;
 }
 
+
 v_unordered_map<unsigned, TermList> MLMatcher::Impl::getBindings() const
 {
   MatchingData const* const md = &s_matchingData;
-  ASS(!md->resolvedLit);  // Untested if using this together with resolvedLit works correctly
+
+  // Untested if using this together with resolvedLit works correctly, but it should (please remove this assertion if you can confirm this).
+  ASS(!md->resolvedLit);
 
   v_unordered_map<unsigned, TermList> bindings;
 

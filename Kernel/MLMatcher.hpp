@@ -37,17 +37,19 @@ class MLMatcher
 {
   private:
     /**
-     * Initializes the matcher to the given match problem.
+     * Initializes the matcher to the given match problem.  TODO: describe the match problem and what the parameters mean.
      * The matcher will be in a valid (but unmatched) state.
      *
      * Preconditions:
+     * - baseLits must have length baseLen
+     * - alts must have length baseLen (for 0 <= bi < baseLen, the literal baseLits[bi] will be matched against the alternatives in the list alts[bi])
      * - All literals in 'alts' must appear in 'instance'.
      * - If resolvedLit is not null, multiset must be false. (Hypothesis; not 100% sure if the matching algorithm breaks in that case)
      */
-    void init(Literal** baseLits,
+    void init(Literal* baseLits[],
               unsigned baseLen,
               Clause* instance,
-              LiteralList** alts,
+              LiteralList* alts[],
               Literal* resolvedLit,
               bool multiset);
 
@@ -57,23 +59,23 @@ class MLMatcher
      */
     MLMatcher();
 
-    void init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, bool multiset = false)
+    void init(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], bool multiset = false)
     {
       init(baseLits, baseLen, instance, alts, nullptr, multiset);
     }
 
-    void init(Clause* base, Clause* instance, LiteralList** alts, bool multiset = false)
+    void init(Clause* base, Clause* instance, LiteralList* alts[], bool multiset = false)
     {
       init(base->literals(), base->length(), instance, alts, multiset);
     }
 
-    void init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit)
+    void init(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], Literal* resolvedLit)
     {
       // NOTE: we need multiset matching for subsumption, but for subsumption resolution it is not necessary
       init(baseLits, baseLen, instance, alts, resolvedLit, resolvedLit == nullptr);
     }
 
-    void init(Clause* base, Clause* instance, LiteralList** alts, Literal* resolvedLit)
+    void init(Clause* base, Clause* instance, LiteralList* alts[], Literal* resolvedLit)
     {
       init(base->literals(), base->length(), instance, alts, resolvedLit);
     }
@@ -92,6 +94,7 @@ class MLMatcher
     /**
      * Returns the alts which are currently matched by some base literal.
      * May only be called in a matched state (i.e., after nextMatch() has returned true).
+     * May only be called if the matcher was initialized with resolvedLit == nullptr.
      */
     v_unordered_set<Literal*> getMatchedAlts() const;
 
@@ -115,28 +118,28 @@ class MLMatcher
 
   public:
     // Helper functions for compatibility to previous code. These work with a shared static instance of MLMatcher::Impl.
-    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList** alts, Literal* resolvedLit)
+    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList* alts[], Literal* resolvedLit)
     {
       return canBeMatched(base->literals(), base->length(), instance, alts, resolvedLit);
     }
 
-    static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit)
+    static bool canBeMatched(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], Literal* resolvedLit)
     {
       return canBeMatchedImpl(baseLits, baseLen, instance, alts, resolvedLit, resolvedLit == nullptr);
     }
 
-    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList** alts, bool multiset = false)
+    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList* alts[], bool multiset = false)
     {
       return canBeMatched(base->literals(), base->length(), instance, alts, multiset);
     }
 
-    static bool canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, bool multiset = false)
+    static bool canBeMatched(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], bool multiset = false)
     {
       return canBeMatchedImpl(baseLits, baseLen, instance, alts, nullptr, multiset);
     }
 
   private:
-    static bool canBeMatchedImpl(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset);
+    static bool canBeMatchedImpl(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], Literal* resolvedLit, bool multiset);
 };
 
 
