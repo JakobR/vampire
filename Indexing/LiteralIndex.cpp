@@ -123,8 +123,12 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 
   Literal* best=(*c)[0];
   unsigned bestVal = best->weight() - best->getDistinctVars();
-  // val == #non-variable-symbols + #variable-duplicates ???
-  // Why is this a good index for forward subsumption??
+  // val == #non-variable-symbols + #variable-duplicates
+  // This value is the "number of symbols that induce constraints".
+  // (variables only induce constraints for instantiation on their repeated occurrences)
+  // We want to maximize this value to have the most restricted literal,
+  // so we get as little matches as possible (because the matches then have
+  // to be passed to the MLMatcher which is expensive).
   for(unsigned i=1;i<clen;i++) {
     Literal* curr=(*c)[i];
     unsigned currVal = curr->weight() - curr->getDistinctVars();
