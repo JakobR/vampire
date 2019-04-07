@@ -435,6 +435,13 @@ private:
   /**
    * Unofficial command
    *
+   * Adds a theory axiom that is treated like the built-in theory axioms from TheoryAxioms.cpp
+   */
+  void readAssertTheory(LExpr* body);
+
+  /**
+   * Unofficial command
+   *
    * Behaves like conjecture declaration in TPTP
    */
   void colorSymbol(const vstring& name, Color color);

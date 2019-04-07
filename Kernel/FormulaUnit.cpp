@@ -36,6 +36,25 @@ using namespace Lib;
 
 using namespace Kernel;
 
+
+FormulaUnit::FormulaUnit(Formula* f, Inference* inf, InputType inputType)
+  : Unit(FORMULA, inf, inputType)
+  , _formula(f)
+  , _cachedColor(COLOR_INVALID)
+  , _cachedWeight(0)
+  , _theoryAxiom(false)
+{
+  // TODO: actually, this code should be in Unit.cpp; since it is the same for clauses and formulas now.
+  Inference::Iterator it = inf->iterator();
+  bool td = inf->hasNext(it);  // td should be false if there are no parents
+  while (inf->hasNext(it)) {
+    Unit* parent = inf->next(it);
+    td &= parent->isTheoryUnit();
+  }
+  _theoryAxiom = td;
+}
+
+
 /**
  * Destroy the unit by deleting it.
  * @since 19/05/2007 Manchester

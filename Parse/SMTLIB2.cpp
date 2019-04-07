@@ -228,6 +228,14 @@ void SMTLIB2::readBenchmark(LExprList* bench)
       continue;
     }
 
+    if (ibRdr.tryAcceptAtom("assert-theory")) {
+      readAssertTheory(ibRdr.readNext());
+
+      ibRdr.acceptEOL();
+
+      continue;
+    }
+
     // not an official SMTLIB command
     if (ibRdr.tryAcceptAtom("color-symbol")) {
       vstring symbol = ibRdr.readAtom();
@@ -2266,7 +2274,7 @@ void SMTLIB2::readAssert(LExpr* body)
 
 void SMTLIB2::readAssertNot(LExpr* body)
 {
-  CALL("SMTLIB2::readAssert");
+  CALL("SMTLIB2::readAssertNot");
 
   _nextVar = 0;
   ASS(_scopes.isEmpty());
@@ -2282,6 +2290,25 @@ void SMTLIB2::readAssertNot(LExpr* body)
   fu = new FormulaUnit(new NegatedFormula(fla),
                        new Inference1(Inference::NEGATED_CONJECTURE, fu),
                        Unit::CONJECTURE);  
+  UnitList::push(fu, _formulas);
+}
+
+void SMTLIB2::readAssertTheory(LExpr* body)
+{
+  CALL("SMTLIB2::readAssertTheory");
+
+  _nextVar = 0;
+  ASS(_scopes.isEmpty());
+
+  ParseResult res = parseTermOrFormula(body);
+
+  Formula* fla;
+  if (!res.asFormula(fla)) {
+    USER_ERROR("Asserted expression of non-boolean sort "+body->toString());
+  }
+
+  FormulaUnit* fu = new FormulaUnit(fla, new Inference(Inference::INPUT), Unit::AXIOM);
+  fu->setTheoryAxiom(true);
   UnitList::push(fu, _formulas);
 }
 

@@ -45,12 +45,7 @@ class FormulaUnit
   : public Unit
 {
 public:
-  /** New unit of a given kind */
-  FormulaUnit(Formula* f,Inference* inf,InputType it)
-    : Unit(FORMULA,inf,it),
-      _formula(f), _cachedColor(COLOR_INVALID), _cachedWeight(0)
-  {}
-
+  FormulaUnit(Formula* f, Inference* inf, InputType inputType);
   void destroy();
   vstring toString() const;
 
@@ -69,12 +64,18 @@ public:
   CLASS_NAME(FormulaUnit);
   USE_ALLOCATOR(FormulaUnit);
 
+  // TODO: call this theory "descendant" like for clauses?
+  bool isTheoryAxiom() const { return _theoryAxiom; }
+  void setTheoryAxiom(bool ta) { _theoryAxiom = ta; }
+
 protected:
   /** Formula of this unit */
   Formula* _formula;
 
   Color _cachedColor;
   unsigned _cachedWeight;
+
+  bool _theoryAxiom;
 }; // class FormulaUnit
 
 

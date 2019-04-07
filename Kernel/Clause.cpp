@@ -27,6 +27,8 @@
 
 #include "Debug/RuntimeStatistics.hpp"
 
+#include "Kernel/FormulaUnit.hpp"
+
 #include "Lib/Allocator.hpp"
 #include "Lib/DArray.hpp"
 #include "Lib/Environment.hpp"
@@ -94,7 +96,10 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
     setInputType(Unit::AXIOM);
   }
   static bool check = env.options->theoryAxioms() != Options::TheoryAxiomLevel::OFF ||
-                      env.options->induction() != Options::Induction::NONE;
+                      env.options->induction() != Options::Induction::NONE ||
+                      true /* env.property->hasTheoryAxioms() */;
+  // TODO: Can we just remove this flag ("check") completely?
+  // Or should I add a property like hasTheoryAxioms. Then we somehow need to make sure that no Clause is created until after we finish reading the input file.
   if(check){
     Inference::Iterator it = inf->iterator();
     bool td = inf->hasNext(it); // td should be false if there are no parents
@@ -106,9 +111,7 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
         id = max(id,static_cast<Clause*>(parent)->inductionDepth());
       }
       else{
-        // if a parent is not a clause then it cannot be (i) a theory axiom itself, 
-        // or (ii) a theory descendant clause
-        td = false;
+        td &= static_cast<FormulaUnit*>(parent)->isTheoryAxiom();
       }
     }
     _theoryDescendant=td;
