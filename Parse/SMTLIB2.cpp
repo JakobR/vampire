@@ -2308,7 +2308,7 @@ void SMTLIB2::readAssertTheory(LExpr* body)
   }
 
   FormulaUnit* fu = new FormulaUnit(fla, new Inference(Inference::INPUT), Unit::AXIOM);
-  fu->setTheoryAxiom(true);
+  fu->setTheoryDescendant(true);
   UnitList::push(fu, _formulas);
 }
 

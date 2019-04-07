@@ -64,9 +64,8 @@ public:
   CLASS_NAME(FormulaUnit);
   USE_ALLOCATOR(FormulaUnit);
 
-  // TODO: call this theory "descendant" like for clauses?
-  bool isTheoryAxiom() const { return _theoryAxiom; }
-  void setTheoryAxiom(bool ta) { _theoryAxiom = ta; }
+  bool isTheoryDescendant() const { return _theoryDescendant; }
+  void setTheoryDescendant(bool ta) { _theoryDescendant = ta; }
 
 protected:
   /** Formula of this unit */
@@ -75,7 +74,7 @@ protected:
   Color _cachedColor;
   unsigned _cachedWeight;
 
-  bool _theoryAxiom;
+  bool _theoryDescendant;
 }; // class FormulaUnit
 
 

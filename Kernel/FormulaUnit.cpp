@@ -42,16 +42,15 @@ FormulaUnit::FormulaUnit(Formula* f, Inference* inf, InputType inputType)
   , _formula(f)
   , _cachedColor(COLOR_INVALID)
   , _cachedWeight(0)
-  , _theoryAxiom(false)
+  , _theoryDescendant(false)
 {
-  // TODO: actually, this code should be in Unit.cpp; since it is the same for clauses and formulas now.
   Inference::Iterator it = inf->iterator();
   bool td = inf->hasNext(it);  // td should be false if there are no parents
   while (inf->hasNext(it)) {
     Unit* parent = inf->next(it);
     td &= parent->isTheoryUnit();
   }
-  _theoryAxiom = td;
+  _theoryDescendant = td;
 }
 
 

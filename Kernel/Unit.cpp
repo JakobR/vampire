@@ -285,7 +285,7 @@ bool Unit::isTheoryUnit() const
   if (isClause()) {
     return static_cast<Clause const*>(this)->isTheoryDescendant();
   } else {
-    return static_cast<FormulaUnit const*>(this)->isTheoryAxiom();
+    return static_cast<FormulaUnit const*>(this)->isTheoryDescendant();
   }
 }
 

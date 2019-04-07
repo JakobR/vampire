@@ -106,7 +106,7 @@ Clause::Clause(unsigned length,InputType inputType,Inference* inf)
       id = max(id,static_cast<Clause*>(parent)->inductionDepth());
     }
     else{
-      td &= static_cast<FormulaUnit*>(parent)->isTheoryAxiom();
+      td &= static_cast<FormulaUnit*>(parent)->isTheoryDescendant();
     }
   }
   _theoryDescendant=td;
