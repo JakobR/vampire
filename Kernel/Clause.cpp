@@ -67,8 +67,8 @@ bool Clause::_auxInUse = false;
 
 
 /** New clause */
-Clause::Clause(unsigned length,InputType it,Inference* inf)
-  : Unit(Unit::CLAUSE,inf,it),
+Clause::Clause(unsigned length,InputType inputType,Inference* inf)
+  : Unit(Unit::CLAUSE,inf,inputType),
     _length(length),
     _color(COLOR_INVALID),
     _input(0),
@@ -90,33 +90,27 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
     _auxTimestamp(0)
 {
 
-  if(it == Unit::EXTENSIONALITY_AXIOM){
+  if(inputType == Unit::EXTENSIONALITY_AXIOM){
     //cout << "Setting extensionality" << endl;
     _extensionalityTag = true;
     setInputType(Unit::AXIOM);
   }
-  static bool check = env.options->theoryAxioms() != Options::TheoryAxiomLevel::OFF ||
-                      env.options->induction() != Options::Induction::NONE ||
-                      true /* env.property->hasTheoryAxioms() */;
-  // TODO: Can we just remove this flag ("check") completely?
-  // Or should I add a property like hasTheoryAxioms. Then we somehow need to make sure that no Clause is created until after we finish reading the input file.
-  if(check){
-    Inference::Iterator it = inf->iterator();
-    bool td = inf->hasNext(it); // td should be false if there are no parents
-    unsigned id = 0; 
-    while(inf->hasNext(it)){
-      Unit* parent = inf->next(it);
-      if(parent->isClause()){
-        td &= static_cast<Clause*>(parent)->isTheoryDescendant();
-        id = max(id,static_cast<Clause*>(parent)->inductionDepth());
-      }
-      else{
-        td &= static_cast<FormulaUnit*>(parent)->isTheoryAxiom();
-      }
+
+  Inference::Iterator it = inf->iterator();
+  bool td = inf->hasNext(it); // td should be false if there are no parents
+  unsigned id = 0;
+  while(inf->hasNext(it)){
+    Unit* parent = inf->next(it);
+    if(parent->isClause()){
+      td &= static_cast<Clause*>(parent)->isTheoryDescendant();
+      id = max(id,static_cast<Clause*>(parent)->inductionDepth());
     }
-    _theoryDescendant=td;
-    _inductionDepth=id;
+    else{
+      td &= static_cast<FormulaUnit*>(parent)->isTheoryAxiom();
+    }
   }
+  _theoryDescendant=td;
+  _inductionDepth=id;
 }
 
 /**
