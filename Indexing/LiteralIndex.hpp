@@ -26,6 +26,7 @@
 #define __LiteralIndex__
 
 #include "Lib/DHMap.hpp"
+#include "Lib/STL.hpp"
 
 #include "Index.hpp"
 
@@ -106,12 +107,23 @@ public:
     : LiteralIndex(is)
     , adjustForFSD(adjustForFSD)
   { }
+
+  bool isSecondBest(Clause* c, Literal* lit) {
+    auto it = secondBestMap.find(c->number());
+    if (it != secondBestMap.end()) {
+      return it->second == lit;
+    } else {
+      return false;
+    }
+  }
+
 protected:
   void handleClause(Clause* c, bool adding);
   friend class Inferences::ForwardSubsumptionDemodulation;  // TODO(JR): only for debugging FSD, to be removed later
 private:
   // when true: if the "best" literal is an equality, also insert with the "second best" literal
   bool adjustForFSD;
+  v_unordered_map<unsigned, Literal*> secondBestMap;
 };
 
 class UnitClauseLiteralIndex

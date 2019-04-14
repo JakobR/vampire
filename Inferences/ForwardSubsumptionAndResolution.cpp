@@ -359,6 +359,10 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
           // we've already checked this clause
           continue;
         }
+        if (_fwIndex->isSecondBest(res.clause, res.literal)) {
+          // std::cerr << "skip due to second best (1)\n";
+          continue;
+        }
         unsigned mlen = mcl->length();
         ASS_G(mlen,1);  // we've already checked all candidate unit clauses above
 
@@ -445,6 +449,10 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
 
           if(mcl->hasAux()) {
             //we have already examined this clause
+            continue;
+          }
+          if (_fwIndex->isSecondBest(res.clause, res.literal)) {
+            // std::cerr << "skip due to second best (2)\n";
             continue;
           }
 

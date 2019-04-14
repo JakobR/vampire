@@ -597,6 +597,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   newCl->setAge(cl->age());
                   env.statistics->forwardSubsumptionDemodulations++;
 
+                  // return false;
+
                   premises = pvi(getSingletonIterator(mcl));
                   replacement = newCl;
                   // std::cerr << "\t FwSubsDem replacement: " << replacement->toNiceString() << std::endl;

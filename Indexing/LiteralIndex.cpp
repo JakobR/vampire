@@ -171,6 +171,21 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   if (adjustForFSD && best->isEquality()) {
     // std::cerr << "FwSubsSimplifyingLiteralIndex: adding also with secondBest: " << c->toNiceString() << std::endl;
     handleLiteral(secondBest, c, adding);  // TODO: test once with this in and once with it commented out, and note the value of the fsd statistics!
+    if (adding) {
+      auto [it, inserted] = secondBestMap.insert({c->number(), secondBest});
+      if (!inserted) {
+        ASSERTION_VIOLATION;
+      }
+    } else {
+      secondBestMap.erase(c->number());
+      // auto it = secondBestMap.find(c->number());
+      // if (it != secondBestMap.end()) {
+      //   secondBestMap.erase(it);
+      // } else {
+      //   ASSERTION_VIOLATION;
+      // }
+    }
+    // secondBestMap.ins
     // TODO: Also check the fsubs time! because now we might get additional (false) matches in fwsubs (because of the second best also being added!)
     // => might have more calls to MLMatcher (but all these new calls are useless)
     // if this is too much we need a new index for fsd
