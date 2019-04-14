@@ -30,6 +30,8 @@ class TheoryRuleTransitivity
     RequestedIndex<GeneratingLiteralIndex, GENERATING_SUBST_TREE> _index;
 
     unsigned pred_int_less;
+
+    ClauseIterator generateClausesBroken(Clause* premise);
 };
 
 
