@@ -128,7 +128,7 @@ void ForwardSubsumptionDemodulation::testSomeStuff()
 {
   CALL("ForwardSubsumptionDemodulation::testSomeStuff");
 
-  std::cerr << "testSomeStuff" << std::endl;
+  // std::cerr << "testSomeStuff" << std::endl;
   return;
 
   {
@@ -375,7 +375,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         continue;
       }
 
-      // Find an equality in mcl
+      // Find a positive equality in mcl to use for demodulation
       for (unsigned eqi = 0; eqi < mcl->length(); ++eqi) {
         Literal* eqLit = (*mcl)[eqi];  // Equality literal for demodulation
         if (!eqLit->isEquality()) {
@@ -599,9 +599,9 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
                   premises = pvi(getSingletonIterator(mcl));
                   replacement = newCl;
-                  std::cerr << "\t FwSubsDem replacement: " << replacement->toNiceString() << std::endl;
-                  std::cerr << "\t          for input cl: " << cl->toNiceString() << std::endl;
-                  std::cerr << "\t               via mcl: " << mcl->toNiceString() << std::endl;
+                  // std::cerr << "\t FwSubsDem replacement: " << replacement->toNiceString() << std::endl;
+                  // std::cerr << "\t          for input cl: " << cl->toNiceString() << std::endl;
+                  // std::cerr << "\t               via mcl: " << mcl->toNiceString() << std::endl;
                   return true;
                 } // if (lhs matches lhsS)
               } // while (nvi.hasNext())

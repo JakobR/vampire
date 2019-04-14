@@ -121,26 +121,63 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   }
   TimeCounter tc(TC_FORWARD_SUBSUMPTION_INDEX_MAINTENANCE);
 
-  Literal* best=(*c)[0];
-  unsigned bestVal = best->weight() - best->getDistinctVars();
-  // val == #non-variable-symbols + #variable-duplicates
-  // This value is the "number of symbols that induce constraints".
-  // (variables only induce constraints for instantiation on their repeated occurrences)
-  // We want to maximize this value to have the most restricted literal,
+  // On the metric used to select the best literal:
+  //
+  //    val == #symbols - #distinct-variables
+  //        == #non-variable-symbols + #variable-duplicates
+  //
+  // This value is the "number of symbols that induce constraints for matching".
+  // (Note that variables only induce constraints for instantiation on their repeated occurrences)
+  // We want to maximize this value to have the most restricting literal,
   // so we get as little matches as possible (because the matches then have
   // to be passed to the MLMatcher which is expensive).
-  for(unsigned i=1;i<clen;i++) {
+
+  Literal* best=(*c)[0];
+  unsigned bestVal = best->weight() - best->getDistinctVars();
+  Literal* secondBest=(*c)[1];
+  unsigned secondBestVal = secondBest->weight() - secondBest->getDistinctVars();
+  if (secondBestVal > bestVal || (secondBestVal == bestVal && secondBest > best)) {
+    std::swap(best, secondBest);
+    std::swap(bestVal, secondBestVal);
+  }
+  ASS_NEQ(best, secondBest);
+  ASS(secondBestVal < bestVal || (secondBestVal == bestVal && secondBest < best));
+  for(unsigned i=2;i<clen;i++) {
     Literal* curr=(*c)[i];
     unsigned currVal = curr->weight() - curr->getDistinctVars();
+    ASS_NEQ(best, curr);
+    ASS_NEQ(secondBest, curr);
     if(currVal>bestVal || (currVal==bestVal && curr>best) ) {
+      secondBest=best;
+      secondBestVal=bestVal;
       best=curr;
       bestVal=currVal;
+      ASS_NEQ(best, secondBest);
+      ASS(secondBestVal < bestVal || (secondBestVal == bestVal && secondBest < best));
+    }
+    else if ( /* curr != best && */ (currVal>secondBestVal || (currVal==secondBestVal && curr>secondBest))) {
+        secondBest=curr;
+        secondBestVal=currVal;
+        ASS_NEQ(best, secondBest);
+        ASS(secondBestVal < bestVal || (secondBestVal == bestVal && secondBest < best));
     }
   }
+  ASS_NEQ(best, secondBest);
+  ASS(secondBestVal < bestVal || (secondBestVal == bestVal && secondBest < best));
   // TODO(JR): only for debugging FSD, to be removed later
   // std::cerr << "FwSubsSimplifyingLiteralIndex::handleClause: best = " << best->toString() << std::endl;
   // std::cerr << "                                                c = " << c->toNiceString() << std::endl;
   handleLiteral(best, c, adding);
+  if (adjustForFSD && best->isEquality()) {
+    // std::cerr << "FwSubsSimplifyingLiteralIndex: adding also with secondBest: " << c->toNiceString() << std::endl;
+    handleLiteral(secondBest, c, adding);  // TODO: test once with this in and once with it commented out, and note the value of the fsd statistics!
+    // TODO: Also check the fsubs time! because now we might get additional (false) matches in fwsubs (because of the second best also being added!)
+    // => might have more calls to MLMatcher (but all these new calls are useless)
+    // if this is too much we need a new index for fsd
+    // TODO:
+    // why 342 fsd applications (albeit to eq taut) when we don't add the second literal vs. only 50 when we add it???
+    // (is this even true? check again)
+  }
 }
 
 void UnitClauseLiteralIndex::handleClause(Clause* c, bool adding)

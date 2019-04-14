@@ -102,11 +102,16 @@ public:
   CLASS_NAME(FwSubsSimplifyingLiteralIndex);
   USE_ALLOCATOR(FwSubsSimplifyingLiteralIndex);
 
-  FwSubsSimplifyingLiteralIndex(LiteralIndexingStructure* is)
-  : LiteralIndex(is) {};
+  FwSubsSimplifyingLiteralIndex(LiteralIndexingStructure* is, bool adjustForFSD)
+    : LiteralIndex(is)
+    , adjustForFSD(adjustForFSD)
+  { }
 protected:
   void handleClause(Clause* c, bool adding);
   friend class Inferences::ForwardSubsumptionDemodulation;  // TODO(JR): only for debugging FSD, to be removed later
+private:
+  // when true: if the "best" literal is an equality, also insert with the "second best" literal
+  bool adjustForFSD;
 };
 
 class UnitClauseLiteralIndex

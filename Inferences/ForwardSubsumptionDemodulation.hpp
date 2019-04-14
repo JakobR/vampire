@@ -61,6 +61,7 @@ class RequestedIndex
 
     Index& operator*() const { return *_index; }
     Index* operator->() const { return _index; }
+    Index* get() const { return _index; }
 
   private:
     Index* _index = nullptr;

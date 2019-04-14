@@ -1188,6 +1188,12 @@ void Options::Options::init()
     _forwardSubsumptionDemodulationMaxMatches.tag(OptionTag::INFERENCES);
     _forwardSubsumptionDemodulationMaxMatches.setRandomChoices({"0", "3"});
 
+    _forwardSubsumptionDemodulationAdjustIndex = ChoiceOptionValue<FSDAdjustIndex>("forward_subsumption_demodulation_adjust_index", "fsd_ix", FSDAdjustIndex::WHEN_FSD_ENABLED, {"when_fsd_enabled", "always", "never"});
+    _forwardSubsumptionDemodulationAdjustIndex.description = "Whether to adjust the forward subsumption index for forward sumsumption demodulation.";
+    _lookup.insert(&_forwardSubsumptionDemodulationAdjustIndex);
+    _forwardSubsumptionDemodulationAdjustIndex.tag(OptionTag::INFERENCES);
+    _forwardSubsumptionDemodulationAdjustIndex.setRandomChoices({"when_fsd_enabled","never"});
+
     _hyperSuperposition = BoolOptionValue("hyper_superposition","",false);
     _hyperSuperposition.description=
     "Generating inference that attempts to do several rewritings at once if it will eliminate literals of the original clause (now we aim just for elimination by equality resolution)";

@@ -748,6 +748,12 @@ public:
       LINEAR = 2
   };
 
+  enum class FSDAdjustIndex : unsigned int {
+    WHEN_FSD_ENABLED = 0,
+    ALWAYS = 1,
+    NEVER = 2
+  };
+
     //==========================================================
     // The Internals
     //==========================================================
@@ -1928,6 +1934,7 @@ public:
   //void setForwardSubsumptionResolution(bool newVal) { _forwardSubsumptionResolution = newVal; }
   bool forwardSubsumptionDemodulation() const { return _forwardSubsumptionDemodulation.actualValue; }
   unsigned forwardSubsumptionDemodulationMaxMatches() const { return _forwardSubsumptionDemodulationMaxMatches.actualValue; }
+  FSDAdjustIndex forwardSubsumptionDemodulationAdjustIndex() const { return _forwardSubsumptionDemodulationAdjustIndex.actualValue; }
   Demodulation forwardDemodulation() const { return _forwardDemodulation.actualValue; }
   bool binaryResolution() const { return _binaryResolution.actualValue; }
   bool bfnt() const { return _bfnt.actualValue; }
@@ -2287,6 +2294,7 @@ private:
   BoolOptionValue _forwardSubsumptionResolution;
   BoolOptionValue _forwardSubsumptionDemodulation;
   UnsignedOptionValue _forwardSubsumptionDemodulationMaxMatches;
+  ChoiceOptionValue<FSDAdjustIndex> _forwardSubsumptionDemodulationAdjustIndex;
   ChoiceOptionValue<FunctionDefinitionElimination> _functionDefinitionElimination;
   IntOptionValue _functionNumber;
   
