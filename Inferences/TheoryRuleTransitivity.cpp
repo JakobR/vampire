@@ -53,7 +53,7 @@ enum class term_source {
   result_right
 };
 
-class ChainedClauseBuilder final
+class ChainedClauseBuilder
 {
   public:
     ChainedClauseBuilder(Clause* premise, Literal* lit, bool polarity, term_source left_term, term_source right_term)
@@ -66,7 +66,7 @@ class ChainedClauseBuilder final
       ASS(premise->contains(lit));
     }
 
-    Clause* operator()(SLQueryResult qr);
+    Clause* operator()(SLQueryResult qr) const;
 
   private:
     Clause* premise;
@@ -76,7 +76,7 @@ class ChainedClauseBuilder final
     term_source right_term;
 };
 
-Clause* ChainedClauseBuilder::operator()(SLQueryResult qr) {
+Clause* ChainedClauseBuilder::operator()(SLQueryResult qr) const {
   CALL("ChainedClauseBuilder::operator()");
 
   ASS_EQ(lit->functor(), qr.literal->functor());
@@ -161,17 +161,15 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
   CALL("TheoryRuleTransitivity::generateClauses");
   // We implement both rules at once.
   //
-  // NOTE:
-  // The activated clause (argument "premise") can be the left or the right clause in the rule above.
-  // TODO: check if a clause can chain with itself. but this should work (as long as it is added to the index before calling generateClauses, which should be the case)
+  // NOTE: the activated clause (argument "premise") can be the left or the right clause in the rule above (or both).
 
 
   // Uncomment this in case I want to show the broken version.
   // return generateClausesBroken(premise);
 
 
-  // We need a new variable relative to the premise
-  // so we can later apply the substitution without messing up u and D.
+  // We need a new variable relative to the whole premise
+  // so we can later apply the substitution without messing up the other term and C/D.
   unsigned const maxVar = premise->maxVar();
   ASS_L(maxVar, std::numeric_limits<decltype(maxVar)>::max());
   TermList newVar(maxVar + 1, false);
@@ -218,6 +216,7 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
     //      lit = r < s
     //      find ~(t < u) with mgu(t,r)
     //      => query: ~(r < x)                    ~(lit[0] < x)
+    //      => result: ~(s < u)                   ~(lit[1] < qr[1])
 
     if (lit->isPositive()) {
       // Case 1a
@@ -228,7 +227,7 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
       Literal* query1b = Literal::create2(lit->functor(), true, *lit->nthArgument(1), newVar);  // s < x   (unify with: t < u)
       auto unif1b = index->getUnifications(query1b, false, true);
       auto res1b = getMappingIterator(unif1b, ChainedClauseBuilder(premise, lit, true, term_source::selected_left, term_source::result_right));  // r < u
-      // Case 2a
+      // Case 2b
       Literal* query2b = Literal::create2(lit->functor(), false, *lit->nthArgument(0), newVar);  // ~(r < x)   (unify with: ~(t < u))
       auto unif2b = index->getUnifications(query2b, false, true);
       auto res2b = getMappingIterator(unif2b, ChainedClauseBuilder(premise, lit, false, term_source::selected_right, term_source::result_right));  // ~(s < u)
@@ -250,9 +249,9 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
 
   // TODO: Count the time used for this rule
   // // The outer iterator ensures we update the time counter for superposition
-  // auto it7 = getTimeCountedIterator(it6, TC_SUPERPOSITION);
+  auto it5 = getTimeCountedIterator(it4, TC_THEORY_TRANSITIVITY);
 
-  return pvi(it4);
+  return pvi(it5);
 }
 
 
