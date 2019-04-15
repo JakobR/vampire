@@ -102,7 +102,7 @@ class FnBuilder
     { }
 
     // Args may contain values of types TermBuilder, Term*, and TermList (also mixed)
-    template <typename...Args, typename std::enable_if_t<sizeof...(Args) == Arity>* = nullptr>
+    template <typename...Args, typename std::enable_if<sizeof...(Args) == Arity>::type* = nullptr>
     TermBuilder operator()(Args... args) const
     {
       std::array<TermList, Arity> const ts{term(args)...};
@@ -243,7 +243,9 @@ class AccumulatingBinder
     bool bind(Var var, TermList term)
     {
       // If the variable is already bound, it must be bound to the same term.
-      auto [ it, inserted ] = m_current.insert({var, term});
+      auto res = m_current.insert({var, term});
+      auto it = res.first;
+      bool inserted = res.second;
       return inserted || (it->second == term);
     }
 

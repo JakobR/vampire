@@ -172,7 +172,8 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
     // std::cerr << "FwSubsSimplifyingLiteralIndex: adding also with secondBest: " << c->toNiceString() << std::endl;
     handleLiteral(secondBest, c, adding);  // TODO: test once with this in and once with it commented out, and note the value of the fsd statistics!
     if (adding) {
-      auto [it, inserted] = secondBestMap.insert({c->number(), secondBest});
+      auto res = secondBestMap.insert({c->number(), secondBest});
+      bool inserted = res.second;
       if (!inserted) {
         ASSERTION_VIOLATION;
       }

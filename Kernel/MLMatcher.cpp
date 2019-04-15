@@ -704,7 +704,9 @@ v_unordered_map<unsigned, TermList> MLMatcher::Impl::getBindings() const
       // md->boundVarNums[bi] contains the corresponding variable indices.
       unsigned var = md->boundVarNums[bi][vi];
       TermList trm = md->altBindings[bi][alti][vi];
-      auto [ it, inserted ] = bindings.insert({var, trm});
+      auto res = bindings.insert({var, trm});
+      auto it = res.first;
+      bool inserted = res.second;
       if (!inserted) {
         ASS_EQ(it->second, trm);
       }
@@ -722,7 +724,7 @@ MLMatcher::MLMatcher()
 void MLMatcher::init(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
 {
   if (!m_impl) {
-    m_impl = std::make_unique<MLMatcher::Impl>();
+    m_impl = make_unique<MLMatcher::Impl>();
   }
   m_impl->init(baseLits, baseLen, instance, alts, resolvedLit, multiset);
 }

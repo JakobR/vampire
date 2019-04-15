@@ -1,6 +1,7 @@
 #ifndef FORWARDSUBSUMPTIONDEMODULATION_HPP
 #define FORWARDSUBSUMPTIONDEMODULATION_HPP
 
+#include "Lib/STL.hpp"
 #include "InferenceEngine.hpp"
 #include "Indexing/Index.hpp"
 #include "Indexing/IndexManager.hpp"
@@ -29,15 +30,15 @@ class RequestedIndex
 
     // Moving transfers ownership of the index
     RequestedIndex(RequestedIndex&& other)
-      : _index{std::exchange(other._index, nullptr)}
-      , _saturationAlgorithm{std::exchange(other._saturationAlgorithm, nullptr)}
+      : _index{exchange(other._index, nullptr)}
+      , _saturationAlgorithm{exchange(other._saturationAlgorithm, nullptr)}
     { }
 
     // Moving transfers ownership of the index
     RequestedIndex& operator=(RequestedIndex&& other) {
       detach();
-      _index = std::exchange(other._index, nullptr);
-      _saturationAlgorithm = std::exchange(other._saturationAlgorithm, nullptr);
+      _index = exchange(other._index, nullptr);
+      _saturationAlgorithm = exchange(other._saturationAlgorithm, nullptr);
       return *this;
     }
 
