@@ -52,10 +52,10 @@ void ForwardSubsumptionDemodulation::detach()
 
 namespace TermBuilder
 {
+
 class TermBuilder
 {
   public:
-
     TermBuilder(Term* t)
       : t{t}
     { }
@@ -64,7 +64,7 @@ class TermBuilder
       : t{t}
     { }
 
-    TermList term() const
+    operator TermList() const
     {
       return t;
     }
@@ -73,15 +73,30 @@ class TermBuilder
     TermList t;
 };
 
-TermBuilder operator+(TermBuilder const& t1, TermBuilder const& t2)
+class LiteralBuilder
 {
-  unsigned const pred_int_plus = env.signature->getInterpretingSymbol(Theory::INT_PLUS);
-  return {Term::create2(pred_int_plus, t1.term(), t2.term())};
+  public:
+    LiteralBuilder(Literal* lit)
+      : lit{lit}
+    { }
+
+    operator Literal*() const
+    {
+      return lit;
+    }
+
+  private:
+    Literal* lit;
+};
+
+TermBuilder var(unsigned i)
+{
+  return {TermList(i, false)};
 }
 
 TermList term(TermBuilder tb)
 {
-  return tb.term();
+  return tb;
 }
 
 TermList term(Term* t)
@@ -93,6 +108,26 @@ TermList term(TermList t)
 {
   return t;
 }
+
+TermBuilder operator+(TermBuilder const& t1, TermBuilder const& t2)
+{
+  unsigned const fn = env.signature->getInterpretingSymbol(Theory::INT_PLUS);
+  return {Term::create2(fn, t1, t2)};
+}
+
+// problematic! (type is too general)
+template <typename T1, typename T2>
+LiteralBuilder operator<(T1 t1, T2 t2)
+{
+  unsigned const pred = env.signature->getInterpretingSymbol(Theory::INT_LESS);
+  return {Literal::create2(pred, true, term(t1), term(t2))};
+}
+
+LiteralBuilder operator!(LiteralBuilder const& l)
+{
+  return {Literal::complementaryLiteral(l)};
+}
+
 template <unsigned Arity>
 class FnBuilder
 {
@@ -119,34 +154,35 @@ class FnBuilder
     unsigned fn;
 };
 
-static TermBuilder const x = TermBuilder(TermList(0, false));
-static TermBuilder const y = TermBuilder(TermList(1, false));
-static TermBuilder const z = TermBuilder(TermList(2, false));
+static TermBuilder const x = var(0);
+static TermBuilder const y = var(1);
+static TermBuilder const z = var(2);
 }
 
 void ForwardSubsumptionDemodulation::testSomeStuff()
 {
   CALL("ForwardSubsumptionDemodulation::testSomeStuff");
 
-  // std::cerr << "testSomeStuff" << std::endl;
   return;
 
   {
     using namespace TermBuilder;
-    TermList xpx = ( x + x ).term();
-    TermList xpxpy = term( x + (x + y) );
+    TermList xpx = x + x;
+    TermList xpxpy = x + (x + y);
 
     // auto h = FnBuilder<1>(env.signature->addFreshFunction(1, "h"));
     // auto g = FnBuilder<2>(env.signature->addFreshFunction(2, "g"));
     auto h = FnBuilder<1>::fresh("h");
     auto g = FnBuilder<2>::fresh("g");
 
-    auto hx = term( h(x) );
-    auto hhx = term( h(h(x)) );
-    auto hhx2 = term( h(hx) );
+    auto hx = h(x);
+    auto hhx = h(h(x));
+    auto hhx2 = h(hx);
 
-    auto gx = term( g(x, x) );
-    auto ggh = term( g(gx, h(x)) );
+    TermList gx = g(x, x);
+    TermList ggh = g(gx, h(hx));
+
+    Literal* blup = hx < ggh;
   }
 
   unsigned csym = env.signature->addFreshFunction(0, "c");
