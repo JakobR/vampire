@@ -335,12 +335,8 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       }
     }
   }
-  // OK, subsumption by unit clauses was easy.
-
-
 
   {  // (new scope required because the goto above would otherwise skip over variable initialization)
-
 
     // Initialize miniIndex with literals in the clause cl
     LiteralMiniIndex miniIndex(cl);
@@ -360,7 +356,6 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
           continue;
         }
         if (_fwIndex->isSecondBest(res.clause, res.literal)) {
-          // std::cerr << "skip due to second best (1)\n";
           continue;
         }
         unsigned mlen = mcl->length();
@@ -452,7 +447,6 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
             continue;
           }
           if (_fwIndex->isSecondBest(res.clause, res.literal)) {
-            // std::cerr << "skip due to second best (2)\n";
             continue;
           }
 
