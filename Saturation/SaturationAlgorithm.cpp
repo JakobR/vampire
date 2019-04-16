@@ -1427,6 +1427,14 @@ SaturationAlgorithm* SaturationAlgorithm::createFromOptions(Problem& prb, const 
 #endif
     }
   }
+
+  if (opt.forwardSubsumptionDemodulation()) {
+    // NOTE:
+    // fsd must be performed after forward subsumption,
+    // because every forward subsumption will lead to a (useless) match in fsd.
+    res->addForwardSimplifierToFront(new ForwardSubsumptionDemodulation());
+  }
+
   if (opt.forwardSubsumption()) {
     if (opt.forwardSubsumptionResolution()) {
       //res->addForwardSimplifierToFront(new CTFwSubsAndRes(true));
@@ -1439,10 +1447,6 @@ SaturationAlgorithm* SaturationAlgorithm::createFromOptions(Problem& prb, const 
   }
   else if (opt.forwardSubsumptionResolution()) {
     USER_ERROR("Forward subsumption resolution requires forward subsumption to be enabled.");
-  }
-
-  if (opt.forwardSubsumptionDemodulation()) {
-    res->addForwardSimplifierToFront(new ForwardSubsumptionDemodulation());
   }
 
   // create backward simplification engine
