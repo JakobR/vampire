@@ -30,9 +30,6 @@
 
 #include "Index.hpp"
 
-namespace Inferences {  // TODO(JR): only for debugging FSD, to be removed later
-  class ForwardSubsumptionDemodulation;
-}
 
 namespace Indexing {
 
@@ -108,7 +105,11 @@ public:
     , adjustForFSD(adjustForFSD)
   { }
 
+  /// Returns whether the clause 'c' was inserted into the index with its second best literal 'lit'.
   bool isSecondBest(Clause* c, Literal* lit) {
+    // if (!adjustForFSD) {
+    //   return false;
+    // }
     auto it = secondBestMap.find(c->number());
     if (it != secondBestMap.end()) {
       return it->second == lit;
@@ -118,11 +119,11 @@ public:
   }
 
 protected:
-  void handleClause(Clause* c, bool adding);
-  friend class Inferences::ForwardSubsumptionDemodulation;  // TODO(JR): only for debugging FSD, to be removed later
+  void handleClause(Clause* c, bool adding) override;
 private:
-  // when true: if the "best" literal is an equality, also insert with the "second best" literal
+  /// When 'adjustForFSD' is true: if the "best" literal is an equality, also insert the clause with the "second best" literal.
   bool adjustForFSD;
+  /// Maps clause number to second best literal (if the clause was actually inserted with this literal).
   v_unordered_map<unsigned, Literal*> secondBestMap;
 };
 

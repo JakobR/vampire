@@ -115,8 +115,8 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 {
   CALL("FwSubsSimplifyingLiteralIndex::handleClause");
 
-  unsigned clen=c->length();
-  if(clen<2) {
+  unsigned const clen = c->length();
+  if (clen < 2) {
     return;
   }
   TimeCounter tc(TC_FORWARD_SUBSUMPTION_INDEX_MAINTENANCE);
@@ -132,67 +132,63 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   // so we get as little matches as possible (because the matches then have
   // to be passed to the MLMatcher which is expensive).
 
-  Literal* best=(*c)[0];
-  unsigned bestVal = best->weight() - best->getDistinctVars();
-  Literal* secondBest=(*c)[1];
-  unsigned secondBestVal = secondBest->weight() - secondBest->getDistinctVars();
-  if (secondBestVal > bestVal || (secondBestVal == bestVal && secondBest > best)) {
-    std::swap(best, secondBest);
-    std::swap(bestVal, secondBestVal);
-  }
-  ASS_NEQ(best, secondBest);
-  ASS(secondBestVal < bestVal || (secondBestVal == bestVal && secondBest < best));
-  for(unsigned i=2;i<clen;i++) {
-    Literal* curr=(*c)[i];
-    unsigned currVal = curr->weight() - curr->getDistinctVars();
-    ASS_NEQ(best, curr);
-    ASS_NEQ(secondBest, curr);
-    if(currVal>bestVal || (currVal==bestVal && curr>best) ) {
-      secondBest=best;
-      secondBestVal=bestVal;
-      best=curr;
-      bestVal=currVal;
-      ASS_NEQ(best, secondBest);
-      ASS(secondBestVal < bestVal || (secondBestVal == bestVal && secondBest < best));
-    }
-    else if ( /* curr != best && */ (currVal>secondBestVal || (currVal==secondBestVal && curr>secondBest))) {
-        secondBest=curr;
-        secondBestVal=currVal;
-        ASS_NEQ(best, secondBest);
-        ASS(secondBestVal < bestVal || (secondBestVal == bestVal && secondBest < best));
-    }
-  }
-  ASS_NEQ(best, secondBest);
-  ASS(secondBestVal < bestVal || (secondBestVal == bestVal && secondBest < best));
-  // TODO(JR): only for debugging FSD, to be removed later
-  // std::cerr << "FwSubsSimplifyingLiteralIndex::handleClause: best = " << best->toString() << std::endl;
-  // std::cerr << "                                                c = " << c->toNiceString() << std::endl;
-  handleLiteral(best, c, adding);
-  if (adjustForFSD && best->isEquality()) {
-    // std::cerr << "FwSubsSimplifyingLiteralIndex: adding also with secondBest: " << c->toNiceString() << std::endl;
-    handleLiteral(secondBest, c, adding);  // TODO: test once with this in and once with it commented out, and note the value of the fsd statistics!
-    if (adding) {
-      auto res = secondBestMap.insert({c->number(), secondBest});
-      bool inserted = res.second;
-      if (!inserted) {
-        ASSERTION_VIOLATION;
+  /// A literal and its rating.
+  /// Ordered by ratings, breaking ties with the literal's pointer values.
+  class RatedLiteral
+  {
+    private:
+      Literal* m_lit;
+      unsigned m_val;
+
+    public:
+      RatedLiteral(Literal* lit)
+        : m_lit(lit)
+        , m_val(computeRating(lit))
+      { }
+
+      static unsigned computeRating(Literal* lit) { return lit->weight() - lit->getDistinctVars(); }
+
+      Literal* lit() const { return m_lit; }
+
+      bool operator<(RatedLiteral const& other) const
+      {
+        return m_val < other.m_val || (m_val == other.m_val && m_lit < other.m_lit);
       }
-    } else {
-      secondBestMap.erase(c->number());
-      // auto it = secondBestMap.find(c->number());
-      // if (it != secondBestMap.end()) {
-      //   secondBestMap.erase(it);
-      // } else {
-      //   ASSERTION_VIOLATION;
-      // }
+      bool operator>(RatedLiteral const& other) const { return other.operator<(*this); }
+      bool operator<=(RatedLiteral const& other) const { return !operator>(other); }
+      bool operator>=(RatedLiteral const& other) const { return !operator<(other); }
+      bool operator==(RatedLiteral const& other) const { return m_lit == other.m_lit; }
+      bool operator!=(RatedLiteral const& other) const { return !operator==(other); }
+  };
+
+  RatedLiteral best{(*c)[0]};
+  RatedLiteral secondBest{(*c)[1]};
+  if (secondBest > best) {
+    std::swap(best, secondBest);
+  }
+  for(unsigned i=2;i<clen;i++) {
+    RatedLiteral curr{(*c)[i]};
+    if (curr > best) {
+      secondBest = best;
+      best = curr;
     }
-    // secondBestMap.ins
-    // TODO: Also check the fsubs time! because now we might get additional (false) matches in fwsubs (because of the second best also being added!)
-    // => might have more calls to MLMatcher (but all these new calls are useless)
-    // if this is too much we need a new index for fsd
-    // TODO:
-    // why 342 fsd applications (albeit to eq taut) when we don't add the second literal vs. only 50 when we add it???
-    // (is this even true? check again)
+    else if (curr > secondBest) {
+      secondBest = curr;
+    }
+  }
+  ASS(best != secondBest);
+  ASS(secondBest < best);
+  handleLiteral(best.lit(), c, adding);
+  if (adjustForFSD && best.lit()->isEquality()) {
+    handleLiteral(secondBest.lit(), c, adding);
+    if (adding) {
+      auto res = secondBestMap.insert({c->number(), secondBest.lit()});
+      bool inserted = res.second;
+      ASS(inserted);
+    } else {
+      ASS(secondBestMap.find(c->number()) != secondBestMap.end());
+      secondBestMap.erase(c->number());
+    }
   }
 }
 

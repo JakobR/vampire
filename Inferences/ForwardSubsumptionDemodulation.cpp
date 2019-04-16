@@ -242,7 +242,7 @@ void ForwardSubsumptionDemodulation::testSomeStuff()
   std::cerr << "Clause mcl:\t" << mcl->toNiceString() << std::endl;
   std::cerr << "Clause cl:\t" << cl->toNiceString() << std::endl;
 
-  _fwIndex->handleClause(mcl, true);
+  // _fwIndex->handleClause(mcl, true);
 
 
   Clause* replacement = nullptr;
