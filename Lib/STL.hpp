@@ -2,7 +2,9 @@
 #define STL_HPP
 
 #include <algorithm>
+#include <map>
 #include <memory>
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -10,6 +12,19 @@
 #include "Lib/STLAllocator.hpp"
 
 namespace Lib {
+
+
+template< typename Key
+        , typename T
+        , typename Compare = std::less<Key>
+        >
+using v_map = std::map<Key, T, Compare, STLAllocator<std::pair<const Key, T>>>;
+
+
+template< typename Key
+        , typename Compare = std::less<Key>
+        >
+using v_set = std::set<Key, Compare, STLAllocator<Key>>;
 
 
 template< typename Key
