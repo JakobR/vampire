@@ -107,9 +107,10 @@ public:
 
   /// Returns whether the clause 'c' was inserted into the index with its second best literal 'lit'.
   bool isSecondBest(Clause* c, Literal* lit) {
-    // if (!adjustForFSD) {
-    //   return false;
-    // }
+    if (!adjustForFSD) {
+      ASS(secondBestMap.empty());
+      return false;
+    }
     auto it = secondBestMap.find(c->number());
     if (it != secondBestMap.end()) {
       return it->second == lit;
