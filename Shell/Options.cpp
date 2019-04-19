@@ -497,10 +497,13 @@ void Options::Options::init()
     _blockedClauseElimination.addProblemConstraint(notWithCat(Property::UEQ));
     _blockedClauseElimination.setRandomChoices({"on","off"});
 
-    _theoryAxioms = ChoiceOptionValue<TheoryAxiomLevel>("theory_axioms","tha",TheoryAxiomLevel::ON,{"on","off","some"});
-    _theoryAxioms.description="Include theory axioms for detected interpreted symbols";
+    _theoryAxioms = ChoiceOptionValue<TheoryAxiomLevel>("theory_axioms","tha",TheoryAxiomLevel::ON,{"on","off","some","custom"});
+    _theoryAxioms.description =
+    "Include theory axioms for detected interpreted symbols. "
+    "The value 'custom' works like 'off' but allows the user to add their own theory axioms in the input file.";
     _lookup.insert(&_theoryAxioms);
     _theoryAxioms.tag(OptionTag::PREPROCESSING);
+    _theoryAxioms.setRandomChoices({"on","off","some"});
 
     _theoryFlattening = BoolOptionValue("theory_flattening","thf",false);
     _theoryFlattening.description = "Flatten clauses to separate theory and non-theory parts";

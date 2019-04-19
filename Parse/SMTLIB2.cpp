@@ -2297,6 +2297,10 @@ void SMTLIB2::readAssertTheory(LExpr* body)
 {
   CALL("SMTLIB2::readAssertTheory");
 
+  if (env.options->theoryAxioms() == Options::TheoryAxiomLevel::OFF) {
+    USER_ERROR("assert-theory is not allowed with --theory_axioms off; you might want to use --theory_axioms custom");
+  }
+
   _nextVar = 0;
   ASS(_scopes.isEmpty());
 

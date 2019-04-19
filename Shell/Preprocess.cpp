@@ -192,7 +192,7 @@ void Preprocess::preprocess(Problem& prb)
     // Normalizer is needed, because the TheoryAxioms code assumes Normalized problem
     InterpretedNormalizer().apply(prb);
     // Add theory axioms if needed
-    if( _options.theoryAxioms() != Options::TheoryAxiomLevel::OFF){
+    if (_options.theoryAxioms() == Options::TheoryAxiomLevel::ON || _options.theoryAxioms() == Options::TheoryAxiomLevel::CHEAP) {
       env.statistics->phase=Statistics::INCLUDING_THEORY_AXIOMS;
       if (env.options->showPreprocessing())
         env.out() << "adding theory axioms" << std::endl;
