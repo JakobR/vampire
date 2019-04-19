@@ -337,6 +337,8 @@ class AccumulatingBinder
 
 
 
+#define CHECK_FOR_MULTIPLE_RESULTS 0
+
 bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
 {
   CALL("ForwardSubsumptionDemodulation::perform");
@@ -393,12 +395,21 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
     // std::cerr << "Literal cl[" << sqli << "]: " << subsQueryLit->toString() << std::endl;
 
+#if CHECK_FOR_MULTIPLE_RESULTS
+    int fsd_result_count = 0;
+    Clause* fsd_first_mcl = nullptr;
+    Clause* fsd_first_result = nullptr;
+    v_set<v_set<Literal*>> fsd_results;
+#endif
+
     SLQueryResultIterator rit = _fwIndex->getGeneralizations(subsQueryLit, false, false);
     while (rit.hasNext()) {
       SLQueryResult res = rit.next();
       Clause* mcl = res.clause;
 
       // std::cerr << "Found generalization: " << res.literal->toString() << "\t which is part of: " << mcl->toNiceString() << std::endl;
+
+      ASS_NEQ(cl, mcl);  // this can't happen because cl isn't in the index yet, right?
 
       if (mcl->hasAux()) {
         // we've already checked this clause
@@ -410,6 +421,13 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
       ASS_GE(mcl->length(), 2);  // property of the index we use
 
       if (!ColorHelper::compatible(cl->color(), mcl->color())) {
+        continue;
+      }
+
+      // No multiset match possible if base is longer than instance
+      if (mcl->length() > cl->length()) {
+        // static int mpc = 0;
+        // std::cerr << "prevented impossible matching " << ++mpc << std::endl;
         continue;
       }
 
@@ -472,7 +490,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         });
 
         static MLMatcher matcher;
-        matcher.init(baseLits.data(), baseLits.size(), cl, alts.data());
+        matcher.init(baseLits.data(), baseLits.size(), cl, alts.data(), true);
 
         static unsigned const maxMatches =
           getOptions().forwardSubsumptionDemodulationMaxMatches() == 0
@@ -536,15 +554,23 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
               Literal* dlit = (*cl)[dli];  // literal to be demodulated
               // std::cerr << "Try to demodulate dlit = cl[" << dli << "]: " << dlit->toString() << std::endl;
 
+              // TODO: discuss
+              if (dlit == eqLit) {
+                // Only possible match would lead to an equality tautology => skip this literal
+                // static int eqcnt = 0;
+                // ++eqcnt;
+                // std::cerr << "eqcnt = " << eqcnt << std::endl;
+                continue;
+              }
+
               if (matchedAlts.find(dlit) != matchedAlts.end()) {
-                // std::cerr << "\t(skipped because part of CΘ)" << std::endl;
                 continue;
               }
 
               NonVariableIterator nvi(dlit);
               while (nvi.hasNext()) {
-                TermList lhsS = nvi.next();  // lhsS because it will be matched against lhs
-                // std::cerr << "Term: " << lhsS.toString();
+                TermList lhsS = nvi.next();  // named 'lhsS' because it will be matched against 'lhs'
+
                 if (!attempted.insert(lhsS)) {
                   // We have already tried to demodulate the term lhsS and did not
                   // succeed (otherwise we would have returned from the function).
@@ -555,19 +581,27 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   continue;
                 }
 
+                // // TODO: discuss
+                // if (dlit == eqLit && lhsS == lhs) {
+                //   // This will match with the identity substitution
+                //   // and lead to an equality tautology (rhs = rhs)
+                //   // => skip
+                //   // nvi.right();  // no subterm of lhs can be an instance of lhs
+                //   // continue;
+                // }
+
                 if (SortHelper::getTermSort(lhsS, dlit) != eqSort) {
                   // std::cerr << "\t(skipped because sorts don't match)" << std::endl;
                   continue;
                 }
                 // std::cerr << std::endl;
 
-                binder.reset();  // resets to last checkpoint (here: to state after subsumption check)
+                binder.reset();  // reset to last checkpoint (here: to state after subsumption check)
                 if (MatchingUtils::matchTerms(lhs, lhsS, binder)) {
                   TermList rhsS = binder.applyTo(rhs);
                   ASS_EQ(lhsS, binder.applyTo(lhs));
 
-                  auto trmOrder = ordering.compare(lhsS, rhsS);
-                  if (!postMLMatchOrdered && trmOrder != Ordering::GREATER) {
+                  if (!postMLMatchOrdered && ordering.compare(lhsS, rhsS) != Ordering::GREATER) {
                     // std::cerr << "\t Match prevented by ordering: " << rhsS.toString() << "     (trmOrder = " << trmOrder << ")" << std::endl;
                     continue;
                   }
@@ -578,7 +612,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                     Ordering::Result tord = ordering.compare(rhsS, other);
                     if (tord != Ordering::LESS && tord != Ordering::LESS_EQ) {
                       Literal* eqLitS = binder.applyTo(eqLit);
-                      /** TODO: what literals do I have to include in the check here exactly?
+                      // TODO: check this again with the writeup of FSD
                       bool isMax = true;
                       for (unsigned li2 = 0; li2 < cl->length(); li2++) {
                         if (dli == li2) {
@@ -591,6 +625,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                         }
                       }
                       if(isMax) {
+                        // std::cerr << "toplevel check prevented something" << std::endl;
                         //The demodulation is this case which doesn't preserve completeness:
                         //s = t     s = t1 \/ C
                         //---------------------
@@ -598,11 +633,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                         //where t > t1 and s = t > C
                         continue;
                       }
-                      */
                     }
                   }  // if (performToplevelCheck)
-
-                  // std::cerr << "\t Match! replacing term with: " << rhsS.toString() << std::endl;
 
                   Literal* newLit = EqHelper::replace(dlit, lhsS, rhsS);
                   // std::cerr << "\t newLit: " << newLit->toString() << std::endl;
@@ -612,11 +644,25 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   if (EqHelper::isEqTautology(newLit)) {
                     // std::cerr << "\t TAUTOLOGY (discard result)" << std::endl;
                     env.statistics->forwardSubsumptionDemodulationsToEqTaut++;
+
+                    // TODO: discuss this;
+                    // we might find another useful match after encountering an equality tautology,
+                    // so maybe we should continue here.
+                    // (After the other optimizations, this is no issue anymore for our oxford-fsd example.
+                    //  "FSD after FS" eliminated most of the equality tautologies.;
+                    //  the "dlit == eqLit" check eliminated the rest.)
+                    continue;
+                    // return false;
+
                     premises = pvi(getSingletonIterator(mcl));
                     replacement = nullptr;
                     // Clause reduction was successful (=> return true),
                     // but we don't set the replacement (because the result is a tautology and should be discarded)
                     return true;
+                  }
+
+                  if (dlit == eqLit) {
+                    std::cerr << "Not an eq taut even though same literal!" << std::endl;
                   }
 
                   Inference* inference = new Inference2(Inference::FORWARD_SUBSUMPTION_DEMODULATION, cl, mcl);
@@ -635,6 +681,40 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   newCl->setAge(cl->age());
                   env.statistics->forwardSubsumptionDemodulations++;
 
+#if CHECK_FOR_MULTIPLE_RESULTS
+                  v_set<Literal*> newClSet;
+                  for (unsigned i = 0; i < newCl->length(); ++i) {
+                    newClSet.insert((*newCl)[i]);
+                  }
+                  auto ins_res = fsd_results.insert(newClSet);
+                  bool result_is_new = ins_res.second;
+                  fsd_result_count += 1;
+                  if (fsd_result_count == 1) {
+                    ASS(!fsd_first_mcl);
+                    ASS(!fsd_first_result);
+                    fsd_first_mcl = mcl;
+                    fsd_first_result = newCl;
+                  }
+                  if (fsd_result_count >= 2 && result_is_new) {
+                    if (fsd_result_count == 2) {
+                      std::cerr << "\n\n";
+                      std::cerr << "fsd_count = 1" << std::endl;
+                      std::cerr << "   mcl = " << fsd_first_mcl->toNiceString() << std::endl;
+                      std::cerr << "   cl  = " << cl->toNiceString() << std::endl;
+                      std::cerr << "   res = " << fsd_first_result->toNiceString() << std::endl;
+                    }
+                    std::cerr << "fsd_count = " << fsd_result_count << std::endl;
+                    std::cerr << "   mcl = " << mcl->toNiceString() << std::endl;
+                    std::cerr << "   cl  = " << cl->toNiceString() << std::endl;
+                    std::cerr << "   res = " << newCl->toNiceString() << std::endl;
+                  }
+#endif
+
+                  // TODO:
+                  // If we continue here, we find a lot more inferences (but takes a long time; factor 2);
+                  // continue;
+
+                  // Return early to measure the impact of computation without affecting the search space
                   // return false;
 
                   premises = pvi(getSingletonIterator(mcl));
