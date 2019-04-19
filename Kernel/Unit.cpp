@@ -280,7 +280,7 @@ unsigned Unit::varCnt()
 /**
  * Returns whether the unit is a theory axiom or derived from only theory axioms.
  */
-bool Unit::isTheoryUnit() const
+bool Unit::isTheoryDescendant() const
 {
   if (isClause()) {
     return static_cast<Clause const*>(this)->isTheoryDescendant();

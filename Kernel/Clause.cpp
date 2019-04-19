@@ -180,12 +180,12 @@ void Clause::destroyExceptInferenceObject()
 }
 
 
-Clause* Clause::fromStack(const Stack<Literal*>& lits, InputType it, Inference* inf)
+Clause* Clause::fromStack(const Stack<Literal*>& lits, InputType it, Inference* inf, bool isTheoryAxiom)
 {
   CALL("Clause::fromStack");
 
   unsigned clen = lits.size();
-  Clause* res = new (clen) Clause(clen, it, inf);
+  Clause* res = new (clen) Clause(clen, it, inf, isTheoryAxiom);
 
   for(unsigned i = 0; i < clen; i++) {
     (*res)[i] = lits[i];

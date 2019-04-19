@@ -45,7 +45,7 @@ class FormulaUnit
   : public Unit
 {
 public:
-  FormulaUnit(Formula* f, Inference* inf, InputType inputType);
+  FormulaUnit(Formula* f, Inference* inf, InputType inputType, bool isTheoryAxioms = false);
   void destroy();
   vstring toString() const;
 
@@ -65,7 +65,6 @@ public:
   USE_ALLOCATOR(FormulaUnit);
 
   bool isTheoryDescendant() const { return _theoryDescendant; }
-  void setTheoryDescendant(bool ta) { _theoryDescendant = ta; }
 
 protected:
   /** Formula of this unit */

@@ -90,17 +90,17 @@ public:
   void* operator new(size_t,unsigned length);
   void operator delete(void* ptr,unsigned length);
 
-  static Clause* fromStack(const Stack<Literal*>& lits, InputType it, Inference* inf);
+  static Clause* fromStack(const Stack<Literal*>& lits, InputType it, Inference* inf, bool isTheoryAxiom = false);
 
   template<class Iter>
-  static Clause* fromIterator(Iter litit, InputType it, Inference* inf)
+  static Clause* fromIterator(Iter litit, InputType it, Inference* inf, bool isTheoryAxiom = false)
   {
     CALL("Clause::fromIterator");
 
     static Stack<Literal*> st;
     st.reset();
     st.loadFromIterator(litit);
-    return fromStack(st, it, inf);
+    return fromStack(st, it, inf, isTheoryAxiom);
   }
 
   static Clause* fromClause(Clause* c);

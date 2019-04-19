@@ -2311,8 +2311,8 @@ void SMTLIB2::readAssertTheory(LExpr* body)
     USER_ERROR("Asserted expression of non-boolean sort "+body->toString());
   }
 
-  FormulaUnit* fu = new FormulaUnit(fla, new Inference(Inference::INPUT), Unit::AXIOM);
-  fu->setTheoryDescendant(true);
+  FormulaUnit* fu = new FormulaUnit(fla, new Inference(Inference::INPUT), Unit::AXIOM, true);
+  ASS(fu->isTheoryDescendant());
   UnitList::push(fu, _formulas);
 }
 
