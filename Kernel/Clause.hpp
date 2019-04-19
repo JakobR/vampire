@@ -84,7 +84,7 @@ public:
     SELECTED = 4u
   };
 
-  Clause(unsigned length,InputType it,Inference* inf);
+  Clause(unsigned length, InputType inputType, Inference* inf, bool isTheoryAxiom = false);
 
 
   void* operator new(size_t,unsigned length);
