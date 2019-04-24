@@ -276,6 +276,13 @@ class AccumulatingBinder
       , m_current(std::move(initialBindings))
     { }
 
+    /// Set the current bindings (uncommitted) without changing the committed bindings
+    AccumulatingBinder& operator=(BindingsMap&& bindings)
+    {
+      m_current = std::move(bindings);
+      return *this;
+    }
+
     bool bind(Var var, TermList term)
     {
       // If the variable is already bound, it must be bound to the same term.
@@ -335,6 +342,100 @@ class AccumulatingBinder
     BindingsMap m_current;
 };
 
+
+class OverlayBinder
+{
+  public:
+    using Var = unsigned int;
+    using BindingsMap = v_unordered_map<Var, TermList>;
+
+    OverlayBinder()
+      : m_base(32)
+      , m_overlay(32)
+    { }
+
+    /// Initializes the base bindings with the given argument
+    explicit
+    OverlayBinder(BindingsMap&& initialBindings)
+      : m_base(std::move(initialBindings))
+      , m_overlay(32)
+    { }
+
+    bool bind(Var var, TermList term)
+    {
+      // If the variable is already bound, it must be bound to the same term.
+      auto base_it = m_base.find(var);
+      if (base_it != m_base.end()) {
+        return base_it->second == term;
+      }
+      else {
+        auto res = m_overlay.insert({var, term});
+        auto it = res.first;
+        bool inserted = res.second;
+        return inserted || (it->second == term);
+      }
+    }
+
+    void specVar(Var var, TermList term)
+    {
+      ASSERTION_VIOLATION;
+    }
+
+    /// Clear all bindings
+    void clear()
+    {
+      m_base.clear();
+      m_overlay.clear();
+    }
+
+    /// Direct access to base bindings
+    BindingsMap& base()
+    {
+      ASS(m_overlay.empty());
+      return m_base;
+    }
+
+    /// Resets to base bindings
+    void reset() {
+      m_overlay.clear();
+    }
+
+    // /// Resets to the given base bindings
+    // void resetToBase(BindingsMap&& newBase)
+    // {
+    //   m_base = std::move(newBase);
+    //   m_overlay.clear();
+    // }
+
+    // Makes objects of this class work as applicator for substitution
+    // (as defined in Kernel/SubstHelper.hpp)
+    TermList apply(Var var) const {
+      auto b_it = m_base.find(var);
+      if (b_it != m_base.end()) {
+        return b_it->second;
+      } else {
+        auto o_it = m_overlay.find(var);
+        if (o_it != m_overlay.end()) {
+          return o_it->second;
+        } else {
+          // If var is not bound, return the variable itself (as TermList)
+          return TermList(var, false);
+        }
+      }
+    }
+
+    TermList applyTo(TermList t, bool noSharing = false) const {
+      return SubstHelper::apply(t, *this, noSharing);
+    }
+
+    Literal* applyTo(Literal* l) const {
+      return SubstHelper::apply(l, *this);
+    }
+
+  private:
+    BindingsMap m_base;
+    BindingsMap m_overlay;
+};
 
 
 #define CHECK_FOR_MULTIPLE_RESULTS 0
@@ -446,8 +547,10 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         }
 
         // Now we have to check if (mcl without eqLit) can be instantiated to some subset of cl
-        v_vector<Literal*> baseLits;
-        v_vector<LiteralList*> alts;
+        static v_vector<Literal*> baseLits;
+        static v_vector<LiteralList*> alts;
+        baseLits.clear();
+        alts.clear();
         baseLits.reserve(mcl->length() - 1);
         alts.reserve(mcl->length() - 1);
         ASS_EQ(baseLits.size(), 0);
@@ -493,10 +596,13 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
           }
           // std::cerr << "Subsumption (modulo eqLit) discovered! Now try to demodulate some term of cl in the unmatched literals." << std::endl;
 
-          auto matchedAlts = matcher.getMatchedAlts();
+          static v_unordered_set<Literal*> matchedAlts(16);
+          matchedAlts.clear();
+          matcher.getMatchedAlts(matchedAlts);
 
-          AccumulatingBinder binder{matcher.getBindings()};
-          binder.commit();
+          static OverlayBinder binder;
+          binder.clear();
+          matcher.getBindings(binder.base());
 
           // Now we try to demodulate some term in an unmatched literal with eqLit.
           // IMPORTANT: only look at literals that are not being matched to mcl (the rule is unsound otherwise)!
@@ -568,7 +674,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   continue;
                 }
 
-                binder.reset();  // reset to last checkpoint (here: to state after subsumption check)
+                binder.reset();  // reset binder to state after subsumption check
                 if (MatchingUtils::matchTerms(lhs, lhsS, binder)) {
                   TermList rhsS = binder.applyTo(rhs);
                   ASS_EQ(lhsS, binder.applyTo(lhs));
