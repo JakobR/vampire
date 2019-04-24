@@ -97,12 +97,14 @@ class MLMatcher
      * May only be called if the matcher was initialized with resolvedLit == nullptr.
      */
     v_unordered_set<Literal*> getMatchedAlts() const;
+    void getMatchedAlts(v_unordered_set<Literal*>& outAlts) const;
 
     /**
      * Returns the variable bindings due to the current match.
      * May only be called in a matched state (i.e., after nextMatch() has returned true).
      */
     v_unordered_map<unsigned, TermList> getBindings() const;
+    void getBindings(v_unordered_map<unsigned, TermList>& outBindings) const;
 
     // Disallow copy because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
     MLMatcher(MLMatcher const&) = delete;

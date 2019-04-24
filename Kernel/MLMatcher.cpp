@@ -368,7 +368,7 @@ namespace Kernel
 using namespace Lib;
 
 
-class MLMatcher::Impl
+class MLMatcher::Impl final
 {
   public:
     CLASS_NAME(MLMatcher::Impl);
@@ -381,7 +381,10 @@ class MLMatcher::Impl
     bool nextMatch();
 
     v_unordered_set<Literal*> getMatchedAlts() const;
+    void getMatchedAlts(v_unordered_set<Literal*>& outAlts) const;
+
     v_unordered_map<unsigned, TermList> getBindings() const;
+    void getBindings(v_unordered_map<unsigned, TermList>& outBindings) const;
 
     // Disallow copy and move because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
     Impl(Impl const&) = delete;
@@ -418,19 +421,19 @@ class MLMatcher::Impl
 
 
 MLMatcher::Impl::Impl()
-  : s_baseLits{32}
-  , s_altsArr{32}
-  , s_varCnts{32}
-  , s_boundVarNums{32}
-  , s_altPtrs{32}
-  , s_remaining{32}
-  , s_intersections{32}
-  , s_nextAlts{32}
-  , s_boundVarNumData{64}
-  , s_altBindingPtrs{128}
-  , s_altBindingsData{256}
-  , s_intersectionData{128}
-  , s_matchRecord{32}
+  : s_baseLits(32)
+  , s_altsArr(32)
+  , s_varCnts(32)
+  , s_boundVarNums(32)
+  , s_altPtrs(32)
+  , s_remaining(32)
+  , s_intersections(32)
+  , s_nextAlts(32)
+  , s_boundVarNumData(64)
+  , s_altBindingPtrs(128)
+  , s_altBindingsData(256)
+  , s_intersectionData(128)
+  , s_matchRecord(32)
 { }
 
 
@@ -668,33 +671,49 @@ v_unordered_set<Literal*> MLMatcher::Impl::getMatchedAlts() const
 {
   MatchingData const* const md = &s_matchingData;
 
+  v_unordered_set<Literal*> matchedAlts;
+  matchedAlts.reserve(md->len);
+  getMatchedAlts(matchedAlts);
+  return matchedAlts;
+}
+
+
+void MLMatcher::Impl::getMatchedAlts(v_unordered_set<Literal*>& outAlts) const
+{
+  MatchingData const* const md = &s_matchingData;
+
   // We cannot extract the matched alts if resolvedLit is set
   // because in that case getAltRecordIndex will always return 0 or 1.
   // See createLiteralBindings(), where this value is set up.
   ASS(!md->resolvedLit);
 
-  v_unordered_set<Literal*> matchedAlts;
-  matchedAlts.reserve(md->len);
+  ASS(outAlts.empty());
 
   for (unsigned bi = 0; bi < md->len; ++bi) {
     unsigned alti = md->nextAlts[bi] - 1;
     unsigned i = md->getAltRecordIndex(bi, alti);
     Literal* matchedAlt = (*md->instance)[i];
-    matchedAlts.insert(matchedAlt);
+    outAlts.insert(matchedAlt);
   }
-
-  return matchedAlts;
 }
 
 
 v_unordered_map<unsigned, TermList> MLMatcher::Impl::getBindings() const
+{
+  v_unordered_map<unsigned, TermList> bindings;
+  getBindings(bindings);
+  return bindings;
+}
+
+
+void MLMatcher::Impl::getBindings(v_unordered_map<unsigned, TermList>& outBindings) const
 {
   MatchingData const* const md = &s_matchingData;
 
   // Untested if using this together with resolvedLit works correctly, but it should (please remove this assertion if you can confirm this).
   ASS(!md->resolvedLit);
 
-  v_unordered_map<unsigned, TermList> bindings;
+  ASS(outBindings.empty());
 
   for (unsigned bi = 0; bi < md->len; ++bi) {
     Literal* b = md->bases[bi];
@@ -704,7 +723,7 @@ v_unordered_map<unsigned, TermList> MLMatcher::Impl::getBindings() const
       // md->boundVarNums[bi] contains the corresponding variable indices.
       unsigned var = md->boundVarNums[bi][vi];
       TermList trm = md->altBindings[bi][alti][vi];
-      auto res = bindings.insert({var, trm});
+      auto res = outBindings.insert({var, trm});
       auto it = res.first;
       bool inserted = res.second;
       if (!inserted) {
@@ -712,8 +731,6 @@ v_unordered_map<unsigned, TermList> MLMatcher::Impl::getBindings() const
       }
     }
   }
-
-  return bindings;
 }
 
 
@@ -743,12 +760,23 @@ v_unordered_set<Literal*> MLMatcher::getMatchedAlts() const
   return m_impl->getMatchedAlts();
 }
 
+void MLMatcher::getMatchedAlts(v_unordered_set<Literal*>& outAlts) const
+{
+  ASS(m_impl);
+  m_impl->getMatchedAlts(outAlts);
+}
+
 v_unordered_map<unsigned, TermList> MLMatcher::getBindings() const
 {
   ASS(m_impl);
   return m_impl->getBindings();
 }
 
+void MLMatcher::getBindings(v_unordered_map<unsigned, TermList>& outBindings) const
+{
+  ASS(m_impl);
+  m_impl->getBindings(outBindings);
+}
 
 bool MLMatcher::canBeMatchedImpl(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList** alts, Literal* resolvedLit, bool multiset)
 {
