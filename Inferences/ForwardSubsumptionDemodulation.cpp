@@ -393,8 +393,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
   for (unsigned sqli = 0; sqli < cl->length(); ++sqli) {
     Literal* subsQueryLit = (*cl)[sqli];  // this literal is only used to query the subsumption index
 
-    // std::cerr << "Literal cl[" << sqli << "]: " << subsQueryLit->toString() << std::endl;
-
 #if CHECK_FOR_MULTIPLE_RESULTS
     int fsd_result_count = 0;
     Clause* fsd_first_mcl = nullptr;
@@ -407,18 +405,14 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
       SLQueryResult res = rit.next();
       Clause* mcl = res.clause;
 
-      // std::cerr << "Found generalization: " << res.literal->toString() << "\t which is part of: " << mcl->toNiceString() << std::endl;
-
       ASS_NEQ(cl, mcl);  // this can't happen because cl isn't in the index yet, right?
+      ASS_GE(mcl->length(), 2);  // property of the index we use
 
       if (mcl->hasAux()) {
         // we've already checked this clause
-        // std::cerr << "Skipping mcl due to aux" << std::endl;
         continue;
       }
       mcl->setAux(nullptr);  // we only need existence and don't care about the actual value
-
-      ASS_GE(mcl->length(), 2);  // property of the index we use
 
       if (!ColorHelper::compatible(cl->color(), mcl->color())) {
         continue;
@@ -445,11 +439,8 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
         unsigned const eqSort = SortHelper::getEqualityArgumentSort(eqLit);
 
-        // std::cerr << "Found equality in mcl: " << eqLit->toString() << std::endl;
-
         Ordering::Result argOrder = ordering.getEqualityArgumentOrder(eqLit);
         bool preordered = (argOrder == Ordering::LESS) || (argOrder == Ordering::GREATER);
-        // std::cerr << "\t preordered = " << preordered << std::endl;
         if (_preorderedOnly && !preordered) {
           continue;
         }
@@ -483,7 +474,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
         // Ensure cleanup of LiteralLists
         ON_SCOPE_EXIT({
-          // std::cerr << "destroying LiteralLists" << std::endl;
           for (LiteralList* ll : alts) {
               LiteralList::destroy(ll);
           }
@@ -508,11 +498,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
           AccumulatingBinder binder{matcher.getBindings()};
           binder.commit();
 
-          // std::cerr << "Literals in CΘ:\n";
-          // for (Literal* ctl : matchedAlts) {
-          //   std::cerr << "\t" << ctl->toString() << std::endl;
-          // }
-
           // Now we try to demodulate some term in an unmatched literal with eqLit.
           // IMPORTANT: only look at literals that are not being matched to mcl (the rule is unsound otherwise)!
           //
@@ -530,7 +515,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
             auto argOrder = ordering.getEqualityArgumentOrder(eqLitS);
             postMLMatchOrdered = (argOrder == Ordering::LESS) || (argOrder == Ordering::GREATER);
           }
-          // std::cerr << "\t postMLMatchOrdered = " << postMLMatchOrdered << std::endl;
 
           auto lhsIt = EqHelper::getDemodulationLHSIterator(eqLit, true, ordering, getOptions());
           while (lhsIt.hasNext()) {
@@ -577,24 +561,12 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   // If we have tried the term lhsS, we must have tried to
                   // demodulate also its subterms, so we can skip them too.
                   nvi.right();
-                  // std::cerr << "\t(skipped because already checked)" << std::endl;
                   continue;
                 }
-
-                // // TODO: discuss
-                // if (dlit == eqLit && lhsS == lhs) {
-                //   // This will match with the identity substitution
-                //   // and lead to an equality tautology (rhs = rhs)
-                //   // => skip
-                //   // nvi.right();  // no subterm of lhs can be an instance of lhs
-                //   // continue;
-                // }
 
                 if (SortHelper::getTermSort(lhsS, dlit) != eqSort) {
-                  // std::cerr << "\t(skipped because sorts don't match)" << std::endl;
                   continue;
                 }
-                // std::cerr << std::endl;
 
                 binder.reset();  // reset to last checkpoint (here: to state after subsumption check)
                 if (MatchingUtils::matchTerms(lhs, lhsS, binder)) {
@@ -602,7 +574,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   ASS_EQ(lhsS, binder.applyTo(lhs));
 
                   if (!postMLMatchOrdered && ordering.compare(lhsS, rhsS) != Ordering::GREATER) {
-                    // std::cerr << "\t Match prevented by ordering: " << rhsS.toString() << "     (trmOrder = " << trmOrder << ")" << std::endl;
                     continue;
                   }
 
