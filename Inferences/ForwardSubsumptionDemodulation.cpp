@@ -747,7 +747,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   ASS_EQ(ordering.compare(dlit, newLit), Ordering::GREATER);
 
                   if (EqHelper::isEqTautology(newLit)) {
-                    // std::cerr << "\t TAUTOLOGY (discard result)" << std::endl;
                     env.statistics->forwardSubsumptionDemodulationsToEqTaut++;
 
                     // TODO: discuss this;

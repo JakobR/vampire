@@ -142,7 +142,7 @@ class RatedLiteral
     static RatedLiteral find_best_in(Clause* c)
     {
       RatedLiteral best{(*c)[0]};
-      for (unsigned i = 2; i < c->length(); ++i) {
+      for (unsigned i = 1; i < c->length(); ++i) {
         RatedLiteral curr{(*c)[i]};
         if (curr > best) {
           best = curr;
@@ -195,7 +195,8 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   // to be passed to the MLMatcher which is expensive).
 
   if (!adjustForFSD) {
-    handleLiteral(RatedLiteral::find_best_in(c).lit(), c, adding);
+    Literal* best = RatedLiteral::find_best_in(c).lit();
+    handleLiteral(best, c, adding);
   } else {
     auto res = RatedLiteral::find_best2_in(c);
     Literal* best = res.first.lit();
