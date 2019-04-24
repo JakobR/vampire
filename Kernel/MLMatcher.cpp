@@ -200,10 +200,6 @@ struct MatchingData {
     NO_ALTERNATIVE
   };
 
-  std::vector<unsigned, STLAllocator<unsigned>> currentAlts;
-  std::vector<unsigned, STLAllocator<unsigned>> originalBaseIndex;
-  unsigned timestamp = 0;
-
   unsigned getRemainingInCurrent(unsigned bi) const
   {
     return remaining->get(bi,bi);
@@ -262,7 +258,6 @@ struct MatchingData {
       }
       remaining->set(i,bIndex+1,remAlts);
     }
-    currentAlts[bIndex] = altIndex;
     return true;
   }
 
@@ -466,16 +461,10 @@ void MLMatcher::Impl::initMatchingData(Literal** baseLits0, unsigned baseLen, Cl
   unsigned mostDistVarsLit=0;
   unsigned mostDistVarsCnt=s_baseLits[0]->getDistinctVars();
 
-  s_matchingData.originalBaseIndex.resize(baseLen);
-  for (unsigned i = 0; i < baseLen; ++i) {
-    s_matchingData.originalBaseIndex[i] = i;
-  }
-
   // Helper function to swap base literals at indices i and j
   auto swapLits = [this] (int i, int j) {
     std::swap(s_baseLits[i], s_baseLits[j]);
     std::swap(s_altsArr[i], s_altsArr[j]);
-    std::swap(s_matchingData.originalBaseIndex[i], s_matchingData.originalBaseIndex[j]);
   };
 
   // Reorder base literals to try and reduce backtracking
@@ -555,9 +544,6 @@ void MLMatcher::Impl::initMatchingData(Literal** baseLits0, unsigned baseLen, Cl
   s_matchingData.altBindingPtrStorage=s_altBindingPtrs.array();
   s_matchingData.altBindingStorage=s_altBindingsData.array();
   s_matchingData.intersectionStorage=s_intersectionData.array();
-
-  s_matchingData.currentAlts.clear();
-  s_matchingData.currentAlts.resize(baseLen);
 }
 
 
