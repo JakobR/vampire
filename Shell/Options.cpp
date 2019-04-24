@@ -1181,12 +1181,14 @@ void Options::Options::init()
     _lookup.insert(&_forwardSubsumptionDemodulation);
     _forwardSubsumptionDemodulation.tag(OptionTag::INFERENCES);
     _forwardSubsumptionDemodulation.setRandomChoices({"on","off"});
+    _forwardSubsumptionDemodulation.setExperimental();
 
     _forwardSubsumptionDemodulationMaxMatches = UnsignedOptionValue("forward_subsumption_demodulation_max_matches", "fsdmm", 1);
     _forwardSubsumptionDemodulationMaxMatches.description = "Maximum number of multi-literal matches to consider in forward subsumption demodulation. 0 means to try all matches (until first success).";
     _lookup.insert(&_forwardSubsumptionDemodulationMaxMatches);
     _forwardSubsumptionDemodulationMaxMatches.tag(OptionTag::INFERENCES);
     _forwardSubsumptionDemodulationMaxMatches.setRandomChoices({"0", "1", "3"});
+    _forwardSubsumptionDemodulationMaxMatches.setExperimental();
 
     _forwardSubsumptionDemodulationAdjustFSIndexForFSD = ChoiceOptionValue<AdjustFSIndexForFSD>("forward_subsumption_demodulation_adjust_fs_index", "fsd_adjust_fs_ix",
                                                                                                 AdjustFSIndexForFSD::WHEN_USED_BY_FSD, {"when_used_by_fsd", "always", "never"});
@@ -1194,11 +1196,13 @@ void Options::Options::init()
     _lookup.insert(&_forwardSubsumptionDemodulationAdjustFSIndexForFSD);
     _forwardSubsumptionDemodulationAdjustFSIndexForFSD.tag(OptionTag::INFERENCES);
     _forwardSubsumptionDemodulationAdjustFSIndexForFSD.setRandomChoices({"when_fsd_enabled","never"});
+    _forwardSubsumptionDemodulationAdjustFSIndexForFSD.setExperimental();
 
     _forwardSubsumptionDemodulationUseSeparateIndex = BoolOptionValue("forward_subsumption_demodulation_use_separate_index", "fsd_sep_ix", true);
     _forwardSubsumptionDemodulationUseSeparateIndex.description = "Whether to use a separate index for forward sumsumption demodulation.";
     _lookup.insert(&_forwardSubsumptionDemodulationUseSeparateIndex);
     _forwardSubsumptionDemodulationUseSeparateIndex.tag(OptionTag::INFERENCES);
+    _forwardSubsumptionDemodulationUseSeparateIndex.setExperimental();
 
     _hyperSuperposition = BoolOptionValue("hyper_superposition","",false);
     _hyperSuperposition.description=

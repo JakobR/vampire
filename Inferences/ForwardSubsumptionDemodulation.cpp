@@ -473,15 +473,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
   //                        if there is τ s.t. lhsΘτ == t
   //                        then replace t in cl by rhsΘτ and return the modified clause.     // NOTE: all occurrences of t in the first literal of (cl\...) where t is found are replaced.
 
-  // std::cerr << "\n\nEntering ForwardSubsumptionDemodulation::perform with\n\tcl = " << cl->toNiceString() << std::endl;
-  // The subsumption check in ForwardSubsumptionAndResolution has two stages:
-  // 1. Check subsumption by unit clauses (with UnitClauseLiteralIndex)
-  // 2. Check subsumption by longer clauses (with FwSubsSimplifyingLiteralIndex)
-  //
-  // In the case of ForwardSubsumptionDemodulation we do not need to check unit
-  // clauses, because these would be unit equalities which are already handled
-  // by the regular ForwardDemodulation rule.
-
   TimeCounter tc(TC_FORWARD_SUBSUMPTION_DEMODULATION);
 
   Ordering& ordering = _salg->getOrdering();
@@ -559,13 +550,14 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
         ASS_EQ(alts.size(), 0);
         for (unsigned mi = 0; mi < mcl->length(); ++mi) {
           if (mi != eqi) {
-            baseLits.push_back((*mcl)[mi]);
+            Literal* base = (*mcl)[mi];
+            baseLits.push_back(base);
 
             LiteralList* l = nullptr;
 
             // TODO: order alternatives, either smaller to larger or larger to smaller, or unordered
             // to do this, can we simply order the literals inside the miniIndex? (in each equivalence class w.r.t. literal header)
-            LiteralMiniIndex::InstanceIterator instIt(miniIndex, (*mcl)[mi], false);
+            LiteralMiniIndex::InstanceIterator instIt(miniIndex, base, false);
             while (instIt.hasNext()) {
               Literal* matched = instIt.next();
               LiteralList::push(matched, l);
@@ -742,7 +734,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                   }  // if (performToplevelCheck)
 
                   Literal* newLit = EqHelper::replace(dlit, lhsS, rhsS);
-                  // std::cerr << "\t newLit: " << newLit->toString() << std::endl;
                   ASS_EQ(ordering.compare(lhsS, rhsS), Ordering::GREATER);
                   ASS_EQ(ordering.compare(dlit, newLit), Ordering::GREATER);
 
@@ -763,10 +754,6 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                     // Clause reduction was successful (=> return true),
                     // but we don't set the replacement (because the result is a tautology and should be discarded)
                     return true;
-                  }
-
-                  if (dlit == eqLit) {
-                    std::cerr << "Not an eq taut even though same literal!" << std::endl;
                   }
 
                   Inference* inference = new Inference2(Inference::FORWARD_SUBSUMPTION_DEMODULATION, cl, mcl);
