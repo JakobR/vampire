@@ -128,6 +128,21 @@ private:
   v_unordered_map<unsigned, Literal*> secondBestMap;
 };
 
+class FSDSimplifyingLiteralIndex
+: public LiteralIndex
+{
+public:
+  CLASS_NAME(FSDSimplifyingLiteralIndex);
+  USE_ALLOCATOR(FSDSimplifyingLiteralIndex);
+
+  FSDSimplifyingLiteralIndex(LiteralIndexingStructure* is)
+    : LiteralIndex(is)
+  { }
+
+protected:
+  void handleClause(Clause* c, bool adding) override;
+};
+
 class UnitClauseLiteralIndex
 : public LiteralIndex
 {

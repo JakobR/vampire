@@ -111,6 +111,38 @@ void SimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   }
 }
 
+
+/// A literal and its rating.
+/// Ordered by ratings, breaking ties with the literal's pointer values.
+class RatedLiteral
+{
+  private:
+    Literal* m_lit;
+    unsigned m_val;
+
+  public:
+    RatedLiteral(Literal* lit)
+      : m_lit(lit), m_val(computeRating(lit))
+    { }
+
+    static unsigned computeRating(Literal* lit) { return lit->weight() - lit->getDistinctVars(); }
+
+    Literal* lit() const { return m_lit; }
+
+    bool operator<(RatedLiteral const& other) const
+    {
+      return m_val < other.m_val || (m_val == other.m_val && m_lit < other.m_lit);
+    }
+    bool operator>(RatedLiteral const& other) const { return other.operator<(*this); }
+    bool operator<=(RatedLiteral const& other) const { return !operator>(other); }
+    bool operator>=(RatedLiteral const& other) const { return !operator<(other); }
+    bool operator==(RatedLiteral const& other) const { return m_lit == other.m_lit; }
+    bool operator!=(RatedLiteral const& other) const { return !operator==(other); }
+
+    // static RatedLiteral find_best_in(Clause* c);
+    // static std::pair<RatedLiteral,RatedLiteral> find_best2_in(Clause* c);
+};
+
 void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 {
   CALL("FwSubsSimplifyingLiteralIndex::handleClause");
@@ -132,42 +164,80 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   // so we get as little matches as possible (because the matches then have
   // to be passed to the MLMatcher which is expensive).
 
-  /// A literal and its rating.
-  /// Ordered by ratings, breaking ties with the literal's pointer values.
-  class RatedLiteral
-  {
-    private:
-      Literal* m_lit;
-      unsigned m_val;
-
-    public:
-      RatedLiteral(Literal* lit)
-        : m_lit(lit)
-        , m_val(computeRating(lit))
-      { }
-
-      static unsigned computeRating(Literal* lit) { return lit->weight() - lit->getDistinctVars(); }
-
-      Literal* lit() const { return m_lit; }
-
-      bool operator<(RatedLiteral const& other) const
-      {
-        return m_val < other.m_val || (m_val == other.m_val && m_lit < other.m_lit);
+  if (!adjustForFSD) {
+    RatedLiteral best{(*c)[0]};
+    for(unsigned i=2;i<clen;i++) {
+      RatedLiteral curr{(*c)[i]};
+      if (curr > best) {
+        best = curr;
       }
-      bool operator>(RatedLiteral const& other) const { return other.operator<(*this); }
-      bool operator<=(RatedLiteral const& other) const { return !operator>(other); }
-      bool operator>=(RatedLiteral const& other) const { return !operator<(other); }
-      bool operator==(RatedLiteral const& other) const { return m_lit == other.m_lit; }
-      bool operator!=(RatedLiteral const& other) const { return !operator==(other); }
-  };
+    }
+    handleLiteral(best.lit(), c, adding);
+  }
+  else {
+    RatedLiteral best{(*c)[0]};
+    RatedLiteral secondBest{(*c)[1]};
+    if (secondBest > best) {
+      std::swap(best, secondBest);
+    }
+    for(unsigned i=2;i<clen;i++) {
+      RatedLiteral curr{(*c)[i]};
+      if (curr > best) {
+        secondBest = best;
+        best = curr;
+      }
+      else if (curr > secondBest) {
+        secondBest = curr;
+      }
+    }
+    ASS(best != secondBest);
+    ASS(secondBest < best);
+    handleLiteral(best.lit(), c, adding);
+    if (best.lit()->isEquality()) {
+      ASS(adjustForFSD);
+      handleLiteral(secondBest.lit(), c, adding);
+      if (adding) {
+        auto res = secondBestMap.insert({c->number(), secondBest.lit()});
+        bool inserted = res.second;
+        ASS(inserted);
+      } else {
+        ASS(secondBestMap.find(c->number()) != secondBestMap.end());
+        secondBestMap.erase(c->number());
+      }
+    }
+  }
+}
+
+void FSDSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
+{
+  CALL("FSDSimplifyingLiteralIndex::handleClause");
+
+  unsigned const clen = c->length();
+  if (clen < 2) {
+    return;
+  }
+  TimeCounter tc(TC_FORWARD_SUBSUMPTION_DEMODULATION_INDEX_MAINTENANCE);
+
+  // On the metric used to select the best literal:
+  //
+  //    val == #symbols - #distinct-variables
+  //        == #non-variable-symbols + #variable-duplicates
+  //
+  // This value is the "number of symbols that induce constraints for matching".
+  // (Note that variables only induce constraints for instantiation on their repeated occurrences)
+  // We want to maximize this value to have the most restricting literal,
+  // so we get as little matches as possible (because the matches then have
+  // to be passed to the MLMatcher which is expensive).
 
   RatedLiteral best{(*c)[0]};
   RatedLiteral secondBest{(*c)[1]};
   if (secondBest > best) {
     std::swap(best, secondBest);
   }
+  bool hasEquality = best.lit()->isEquality() || secondBest.lit()->isEquality();
   for(unsigned i=2;i<clen;i++) {
     RatedLiteral curr{(*c)[i]};
+    hasEquality |= curr.lit()->isEquality();
     if (curr > best) {
       secondBest = best;
       best = curr;
@@ -178,17 +248,18 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   }
   ASS(best != secondBest);
   ASS(secondBest < best);
-  handleLiteral(best.lit(), c, adding);
-  if (adjustForFSD && best.lit()->isEquality()) {
+  if (!hasEquality) {
+    // Only need clauses with at least one equality for FSD
+    return;
+  }
+  if (!best.lit()->isEquality()) {
+    handleLiteral(best.lit(), c, adding);
+  } else if (!secondBest.lit()->isEquality()) {
     handleLiteral(secondBest.lit(), c, adding);
-    if (adding) {
-      auto res = secondBestMap.insert({c->number(), secondBest.lit()});
-      bool inserted = res.second;
-      ASS(inserted);
-    } else {
-      ASS(secondBestMap.find(c->number()) != secondBestMap.end());
-      secondBestMap.erase(c->number());
-    }
+  } else {
+    // both are equalities, so we need to add both
+    handleLiteral(best.lit(), c, adding);
+    handleLiteral(secondBest.lit(), c, adding);
   }
 }
 

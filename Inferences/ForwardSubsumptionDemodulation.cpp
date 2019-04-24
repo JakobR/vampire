@@ -33,7 +33,9 @@ void ForwardSubsumptionDemodulation::attach(SaturationAlgorithm* salg)
 {
   CALL("ForwardSubsumptionDemodulation::attach");
   ForwardSimplificationEngine::attach(salg);
-  _fwIndex.attach(salg);
+
+  auto index_type = getOptions().forwardSubsumptionDemodulationUseSeparateIndex() ? FSD_SUBST_TREE : FW_SUBSUMPTION_SUBST_TREE;
+  _index.attach(salg, index_type);
 
   _preorderedOnly = false;  // TODO: might add an option for this like in forward demodulation
   _performRedundancyCheck = getOptions().demodulationRedundancyCheck();
@@ -44,7 +46,7 @@ void ForwardSubsumptionDemodulation::attach(SaturationAlgorithm* salg)
 void ForwardSubsumptionDemodulation::detach()
 {
   CALL("ForwardSubsumptionDemodulation::detach");
-  _fwIndex.detach();
+  _index.detach();
   ForwardSimplificationEngine::detach();
 }
 
@@ -242,7 +244,7 @@ void ForwardSubsumptionDemodulation::testSomeStuff()
   std::cerr << "Clause mcl:\t" << mcl->toNiceString() << std::endl;
   std::cerr << "Clause cl:\t" << cl->toNiceString() << std::endl;
 
-  // _fwIndex->handleClause(mcl, true);
+  // _index->handleClause(mcl, true);
 
 
   Clause* replacement = nullptr;
@@ -350,15 +352,15 @@ class OverlayBinder
     using BindingsMap = v_unordered_map<Var, TermList>;
 
     OverlayBinder()
-      : m_base(32)
-      , m_overlay(32)
+      : m_base(16)
+      , m_overlay(16)
     { }
 
     /// Initializes the base bindings with the given argument
     explicit
     OverlayBinder(BindingsMap&& initialBindings)
       : m_base(std::move(initialBindings))
-      , m_overlay(32)
+      , m_overlay(16)
     { }
 
     bool bind(Var var, TermList term)
@@ -501,7 +503,7 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
     v_set<v_set<Literal*>> fsd_results;
 #endif
 
-    SLQueryResultIterator rit = _fwIndex->getGeneralizations(subsQueryLit, false, false);
+    SLQueryResultIterator rit = _index->getGeneralizations(subsQueryLit, false, false);
     while (rit.hasNext()) {
       SLQueryResult res = rit.next();
       Clause* mcl = res.clause;

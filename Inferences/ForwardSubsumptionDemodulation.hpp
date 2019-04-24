@@ -52,6 +52,7 @@ class RequestedIndex
       ASS(_index != nullptr);
     }
 
+    // detach() may be called multiple times (manually and by destructor)
     void detach() {
       _index = nullptr;
       if (_saturationAlgorithm) {
@@ -66,6 +67,65 @@ class RequestedIndex
 
   private:
     Index* _index = nullptr;
+    SaturationAlgorithm* _saturationAlgorithm = nullptr;
+};
+
+template <typename Index>
+class RequestedIndex2
+{
+  public:
+    CLASS_NAME(RequestedIndex2);
+    USE_ALLOCATOR(RequestedIndex2);
+
+    RequestedIndex2() { }
+
+    // Disallow copying
+    RequestedIndex2(RequestedIndex2 const&) = delete;
+    RequestedIndex2& operator=(RequestedIndex2 const&) = delete;
+
+    // Moving transfers ownership of the index
+    RequestedIndex2(RequestedIndex2&& other)
+      : _index{exchange(other._index, nullptr)}
+      , _type{other._type}
+      , _saturationAlgorithm{exchange(other._saturationAlgorithm, nullptr)}
+    { }
+
+    // Moving transfers ownership of the index
+    RequestedIndex2& operator=(RequestedIndex2&& other) {
+      detach();
+      _index = exchange(other._index, nullptr);
+      _type = other._type;
+      _saturationAlgorithm = exchange(other._saturationAlgorithm, nullptr);
+      return *this;
+    }
+
+    ~RequestedIndex2() { detach(); }
+
+    void attach(SaturationAlgorithm* salg, Indexing::IndexType type) {
+      ASS(!_index);
+      ASS(!_saturationAlgorithm);
+      _saturationAlgorithm = salg;
+      _type = type;
+      _index = dynamic_cast<Index*>(_saturationAlgorithm->getIndexManager()->request(type));
+      ASS(_index != nullptr);
+    }
+
+    // detach() may be called multiple times (manually and by destructor)
+    void detach() {
+      _index = nullptr;
+      if (_saturationAlgorithm != nullptr) {
+        _saturationAlgorithm->getIndexManager()->release(_type);
+        _saturationAlgorithm = nullptr;
+      }
+    }
+
+    Index& operator*() const { return *_index; }
+    Index* operator->() const { return _index; }
+    Index* get() const { return _index; }
+
+  private:
+    Index* _index = nullptr;
+    Indexing::IndexType _type;
     SaturationAlgorithm* _saturationAlgorithm = nullptr;
 };
 
@@ -100,7 +160,7 @@ class ForwardSubsumptionDemodulation
     bool perform(Clause* cl, Clause*& replacement, ClauseIterator& premises) override;
 
   private:
-    RequestedIndex<FwSubsSimplifyingLiteralIndex, FW_SUBSUMPTION_SUBST_TREE> _fwIndex;
+    RequestedIndex2<LiteralIndex> _index;
 
     bool _preorderedOnly;
     bool _performRedundancyCheck;

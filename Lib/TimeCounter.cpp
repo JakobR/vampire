@@ -249,6 +249,9 @@ void TimeCounter::outputSingleStat(TimeCounterUnit tcu, ostream& out)
   case TC_FORWARD_SUBSUMPTION_INDEX_MAINTENANCE:
     out<<"forward subsumption index maintenance";
     break;
+  case TC_FORWARD_SUBSUMPTION_DEMODULATION_INDEX_MAINTENANCE:
+    out<<"forward subsumption demodulation index maintenance";
+    break;
   case TC_BINARY_RESOLUTION_INDEX_MAINTENANCE:
     out<<"binary resolution index maintenance";
     break;

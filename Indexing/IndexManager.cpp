@@ -153,8 +153,9 @@ Index* IndexManager::create(IndexType t)
   bool isGenerating;
   static bool const useConstraints = env.options->unificationWithAbstraction()!=Options::UnificationWithAbstraction::OFF;
   static bool const fwSubsAdjustForFSD =
-    env.options->forwardSubsumptionDemodulationAdjustIndex() == Options::FSDAdjustIndex::ALWAYS
-    || (env.options->forwardSubsumptionDemodulationAdjustIndex() == Options::FSDAdjustIndex::WHEN_FSD_ENABLED
+    env.options->forwardSubsumptionDemodulationAdjustFSIndexForFSD() == Options::AdjustFSIndexForFSD::ALWAYS
+    || (env.options->forwardSubsumptionDemodulationAdjustFSIndexForFSD() == Options::AdjustFSIndexForFSD::WHEN_USED_BY_FSD
+        && env.options->forwardSubsumptionDemodulationUseSeparateIndex() == false
         && env.options->forwardSubsumptionDemodulation());
 
   switch(t) {
@@ -230,6 +231,12 @@ Index* IndexManager::create(IndexType t)
     is=new LiteralSubstitutionTree();
 //    is=new CodeTreeLIS();
     res=new FwSubsSimplifyingLiteralIndex(is, fwSubsAdjustForFSD);
+    isGenerating = false;
+    break;
+
+  case FSD_SUBST_TREE:
+    is = new LiteralSubstitutionTree();
+    res = new FSDSimplifyingLiteralIndex(is);
     isGenerating = false;
     break;
 
