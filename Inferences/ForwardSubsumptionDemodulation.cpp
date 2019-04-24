@@ -608,9 +608,15 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
 
                   bool performToplevelCheck = _performRedundancyCheck && dlit->isEquality() && (lhsS == *dlit->nthArgument(0) || lhsS == *dlit->nthArgument(1));
                   if (performToplevelCheck) {
-                    TermList other = EqHelper::getOtherEqualitySide(dlit, lhsS);
+                    //   lhsS=rhsS
+                    //    eqLitS          dlit
+                    //    vvvvv          vvvvv
+                    //    l = r \/ C     l = t \/ D
+                    //   ---------------------------
+                    //        r = t \/ D
+                    TermList other = EqHelper::getOtherEqualitySide(dlit, lhsS);   // t
                     Ordering::Result tord = ordering.compare(rhsS, other);
-                    if (tord != Ordering::LESS && tord != Ordering::LESS_EQ) {
+                    if (tord != Ordering::LESS && tord != Ordering::LESS_EQ) {  // TODO: why is LESS_EQ ok?   tord == LESS_EQ  ==>  r ≤ t  ==>  l=r ≤ l=t  ==>  ??? (Don't we need strictly less here?)
                       Literal* eqLitS = binder.applyTo(eqLit);
                       // TODO: check this again with the writeup of FSD
                       bool isMax = true;
@@ -619,18 +625,38 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                           continue;
                         }
                         Literal* lit2 = (*cl)[li2];
-                        if(ordering.compare(eqLitS, (*cl)[li2]) == Ordering::LESS) {
-                          isMax=false;
+                        if (ordering.compare(eqLitS, (*cl)[li2]) == Ordering::LESS) {
+                          isMax = false;
                           break;
                         }
                       }
-                      if(isMax) {
+                      if (isMax) {
                         // std::cerr << "toplevel check prevented something" << std::endl;
-                        //The demodulation is this case which doesn't preserve completeness:
-                        //s = t     s = t1 \/ C
-                        //---------------------
-                        //     t = t1 \/ C
-                        //where t > t1 and s = t > C
+                        // We have the following case which doesn't preserve completeness:
+                        //    l = r \/ C     l = t \/ D
+                        //   ---------------------------
+                        //        r = t \/ D
+                        // where r > t and l = r > D.
+                        //
+                        // Reason:
+                        // the right premise should become redundant after application of FSD (since it is a simplification rule).
+                        // It is redundant, if it is a logical consequence of smaller clauses in the search space.
+                        // * It is easy to see that the right premise is a logical consequence of the conclusion and the left premise.
+                        // * Also, the right premise is larger than the conclusion, because l > r.
+                        // * However, we also need that the left premise is smaller than the right premise.
+                        //   Three cases for dlit (the literal in the right premise to be demodulated):
+                        //   1. L[l] in the right premise is not an equality literal. Then L[l] > l = r because equalities are smallest in the ordering.
+                        //   2. s[l] = t with s[l] ≠ l. Then s[l] > l (subterm property of simplification orderings).
+                        //                              Thus s[l] = t > l = r.  (multiset extension of ordering: { s[l], t } > { s[l] } > { l, r }, because s[l] > l > r)
+                        //   3. l = t in the right premise.
+                        //   3a. If r ≤ t, then l = r ≤ l = t.
+                        //   3b. Otherwise we have to perform the toplevel check. isMax iff l = r > D.
+                        //
+                        //   Now we have a literal L in the right premise such that L > l = r.
+                        //   We know that Cσ is a sub-multiset of D, thus C ≤ Cσ ≤ D.
+                        //
+                        //   What if
+                        //   l = r \/ L \/ P  ;  l = t \/ L \/ P \/ Q   and r > t ???
                         continue;
                       }
                     }
