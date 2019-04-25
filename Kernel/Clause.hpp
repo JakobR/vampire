@@ -297,12 +297,10 @@ public:
 
   VirtualIterator<unsigned> getVariableIterator();
 
-//#if VDEBUG
+#if VDEBUG
   bool contains(Literal* lit);
   void assertValid();
-  void incFreezeCount(){ _freeze_count++;}
-  int getFreezeCount(){ return _freeze_count;}
-//#endif
+#endif
 
   /** Mark clause as input clause for the saturation algorithm */
   void markInput() { _input=1; }
@@ -455,7 +453,7 @@ protected:
 #if VDEBUG
   static bool _auxInUse;
 #endif
-  int _freeze_count;
+
 //#endif
 
   /** Array of literals of this unit */
