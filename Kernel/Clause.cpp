@@ -154,10 +154,6 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
   // if (numPremises >= 2) {
   //     _proofTreeNumInferences2 += 1;
   // }
-
-//#if VDEBUG
-_freeze_count=0;
-//#endif
 }
 
 /**
