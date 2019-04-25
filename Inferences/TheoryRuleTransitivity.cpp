@@ -145,6 +145,9 @@ Clause* ChainedClauseBuilder::operator()(SLQueryResult qr) const {
 
 
 /**
+ * Implements the three rules
+ *
+ *
  *     r < s \/ C     t < u \/ D     θ = mgu(s, t)
  *    ---------------------------------------------
  *               rθ < uθ \/ Cθ \/ Dθ
@@ -154,19 +157,17 @@ Clause* ChainedClauseBuilder::operator()(SLQueryResult qr) const {
  *    ------------------------------------------------
  *               ~(sθ < uθ) \/ Cθ \/ Dθ
  *
+ *
+ *     r < s \/ C     ~(t < u) \/ D     θ = mgu(s, u)
+ *    ------------------------------------------------
+ *               ~(tθ < rθ) \/ Cθ \/ Dθ
+ *
+ *
  *  where the leftmost literal in each premise is selected.
  */
 ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
 {
   CALL("TheoryRuleTransitivity::generateClauses");
-  // We implement both rules at once.
-  //
-  // NOTE: the activated clause (argument "premise") can be the left or the right clause in the rule above (or both).
-
-
-  // Uncomment this in case I want to show the broken version.
-  // return generateClausesBroken(premise);
-
 
   // We need a new variable relative to the whole premise
   // so we can later apply the substitution without messing up the other term and C/D.
@@ -195,6 +196,7 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
   // Iterator<Iterator<Clause*>>
   auto it3 = getMappingIterator(it2, [index, premise, newVar](Literal* lit) {
     CALL("TheoryRuleTransitivity::generateClauses::it3");
+    // NOTE: the activated clause (argument "premise") can be the left or the right clause in the rules above (or both).
     // Rule 1:
     //    1a, premise is right:
     //      lit = t < u
@@ -217,6 +219,17 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
     //      find ~(t < u) with mgu(t,r)
     //      => query: ~(r < x)                    ~(lit[0] < x)
     //      => result: ~(s < u)                   ~(lit[1] < qr[1])
+    // Rule 3:
+    //    3a, premise is right:
+    //      lit = ~(t < u)
+    //      find r < s with mgu(s,u)
+    //      => query: x < u                       x < lit[1]
+    //      => result: ~(t < r)                   ~(lit[0] < qr[0])
+    //    3b, premise is left:
+    //      lit = r < s
+    //      find ~(t < u) with mgu(s,u)
+    //      => query: ~(x < s)                    ~(x < lit[1])
+    //      => result: ~(t < r)                   ~(qr[0] < lit[0])
 
     if (lit->isPositive()) {
       // Case 1a
@@ -231,14 +244,22 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
       Literal* query2b = Literal::create2(lit->functor(), false, *lit->nthArgument(0), newVar);  // ~(r < x)   (unify with: ~(t < u))
       auto unif2b = index->getUnifications(query2b, false, true);
       auto res2b = getMappingIterator(unif2b, ChainedClauseBuilder(premise, lit, false, term_source::selected_right, term_source::result_right));  // ~(s < u)
-      return pvi(getConcatenatedIterator(res1a, getConcatenatedIterator(res1b, res2b)));
+      // Case 3b
+      Literal* query3b = Literal::create2(lit->functor(), false, newVar, *lit->nthArgument(1));  // ~(x < s)   (unify with: ~(t < u))
+      auto unif3b = index->getUnifications(query3b, false, true);
+      auto res3b = getMappingIterator(unif3b, ChainedClauseBuilder(premise, lit, false, term_source::result_left, term_source::selected_left));  // ~(t < r)
+      return pvi(getConcatenatedIterator(res1a, getConcatenatedIterator(res1b, getConcatenatedIterator(res2b, res3b))));
     } else {
       ASS(lit->isNegative());
       // Case 2a
       Literal* query2a = Literal::create2(lit->functor(), true, *lit->nthArgument(0), newVar);  // t < x   (unify with: r < s)
       auto unif2a = index->getUnifications(query2a, false, true);
       auto res2a = getMappingIterator(unif2a, ChainedClauseBuilder(premise, lit, false, term_source::result_right, term_source::selected_right));  // ~(s < u)
-      return pvi(res2a);
+      // Case 3a
+      Literal* query3a = Literal::create2(lit->functor(), true, newVar, *lit->nthArgument(1));  // x < u   (unify with: r < s)
+      auto unif3a = index->getUnifications(query3a, false, true);
+      auto res3a = getMappingIterator(unif3a, ChainedClauseBuilder(premise, lit, false, term_source::selected_left, term_source::result_left));  // ~(t < r)
+      return pvi(getConcatenatedIterator(res2a, res3a));
     }
   });
   static_assert(std::is_same<ELEMENT_TYPE(ELEMENT_TYPE(decltype(it3))), Clause*>::value, "");
@@ -250,168 +271,6 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
   // TODO: Count the time used for this rule
   // // The outer iterator ensures we update the time counter for superposition
   auto it5 = getTimeCountedIterator(it4, TC_THEORY_TRANSITIVITY);
-
-  return pvi(it5);
-}
-
-
-
-
-
-/**
- *     r < s \/ C     t < u \/ D     θ = mgu(s, t)
- *    ---------------------------------------------
- *               rθ < uθ \/ Cθ \/ Dθ
- *
- *
- *     r < s \/ C     ~(t < u) \/ D     θ = mgu(r, t)
- *    ------------------------------------------------
- *               ~(sθ < uθ) \/ Cθ \/ Dθ
- *
- *  where the leftmost literal in each premise is selected.
- */
-ClauseIterator TheoryRuleTransitivity::generateClausesBroken(Clause* premise)
-{
-  CALL("TheoryRuleTransitivity::generateClausesBroken");
-  // We implement both rules at once.
-  //
-  // NOTE:
-  // Selected clause (the argument "premise") must be the right one,
-  // because otherwise it could happen that r<s is added first,
-  // then ~(t<u) and no match is found,
-  // while in the other direction we would have found it.
-  //
-  // So we can use the polarity of the selected literal to decide
-  // whether we are in the first or in the second rule.
-
-  // TODO
-  // The above note is wrong.
-  // With this version, the example transitivity_rule_disjunctive finally works.
-  // But the other two examples, transitivity_rule and transitivity_rule_subst are now broken!
-  // Because of this, I suspect that the relevant inference is never applied.
-  // I'm pretty sure this depends on the order the clauses are selected.
-  // => change the rule so we don't lose potential application
-
-  // We need a new variable relative to the premise
-  // so we can later apply the substitution without messing up u and D.
-  unsigned const maxVar = premise->maxVar();
-  ASS_L(maxVar, std::numeric_limits<decltype(maxVar)>::max());
-  TermList newVar(maxVar + 1, false);
-#if VDEBUG
-  for (unsigned i = 0; i < premise->length(); ++i) {
-    Literal* l = (*premise)[i];
-    ASS(!l->containsSubterm(newVar));
-  }
-#endif
-
-  auto it1 = premise->getSelectedLiteralIterator();
-
-  // Any selected literal of the form:
-  //    t < u
-  // (positive or negative).
-  auto it2 = getFilteredIterator(it1, [this](Literal* lit) -> bool {
-    CALL("TheoryRuleTransitivity::generateClauses::it2");
-    return lit->functor() == pred_int_less;
-  });
-
-  // Iterator<Iterator<std::pair<Literal*,SLQueryResult>>>
-  auto it3 = getMappingIterator(it2, [this, newVar](Literal* lit) {
-    CALL("TheoryRuleTransitivity::generateClauses::it3");
-    // Case 1, lit is positive:
-    //    lit = t < u
-    //    find r < s with mgu(t,s)
-    // Case 2, lit is negative:
-    //    lit = ~(t < u)
-    //    find r < s with mgu(t,r)
-
-    TermList const t = *lit->nthArgument(0);
-
-    Literal* queryLit = nullptr;
-    if (lit->isPositive()) {
-      // template literal: x < t
-      queryLit = Literal::create2(lit->functor(), true, newVar, t);
-    } else {
-      ASS(lit->isNegative());
-      // template literal: t < x
-      queryLit = Literal::create2(lit->functor(), true, t, newVar);
-    }
-    ASS(queryLit);
-
-    // GeneratingLiteralIndex matches selected literals
-    // TODO This rule can probably be improved by using a TermIndex instead (that only indexes on arguments of "<"). The question is if the tradeoff with index maintenance is worth it.
-    auto unifIt1 = _index->getUnifications(queryLit, false, true);
-
-    // Annotate each result with the currently selected literal
-    auto unifIt2 = pushPairIntoRightIterator(lit, unifIt1);
-
-    return pvi(unifIt2);  // need pvi here, otherwise getFlattenedIterator complains
-  });
-  static_assert(std::is_same<ELEMENT_TYPE(ELEMENT_TYPE(decltype(it3))), std::pair<Literal*, SLQueryResult>>::value, "");
-
-  // Use a VirtualIterator here because only the specialization of getFlattenedIterator for VirtualIterator<VirtualIterator<T>> is lazy
-  // (actually this is only necessary if we use output in the intermediate stages)
-  auto it4 = getFlattenedIterator(pvi(it3));
-
-  // Build the result clauses
-  auto it5 = getMappingIterator(it4, [premise](std::pair<Literal*, SLQueryResult> arg) {
-    CALL("TheoryRuleTransitivity::generateClauses::it5");
-    Literal* lit = arg.first;             // t < u  or  ~(t < u)
-
-    Clause* rCl = arg.second.clause;
-    Literal* rLit = arg.second.literal;   // r < s  with either mgu(t,s) or mgu(t,r)
-
-    // TODO: assumption: no duplicated literals in premise and rCl [but this assumption seems to be pervasive in vampire]
-    // also, there is a DuplicateLiteralRemovalISE that is added in MainLoop. So we probably don't have to worry about that.
-    int const nlen = premise->length() + rCl->length() - 1;
-    ASS_GE(nlen, 1);
-
-    Inference* inf = new Inference2(Inference::THEORY_INFERENCE_RULE_TRANSITIVITY, premise, rCl);
-    Unit::InputType inpType = std::max(premise->inputType(), rCl->inputType());
-    Clause* res = new(nlen) Clause(nlen, inpType, inf);
-
-    auto theta = arg.second.substitution;
-    Literal* newLit = nullptr;
-    if (lit->isPositive()) {
-      // rθ < uθ
-      TermList r = *rLit->nthArgument(0);
-      TermList u = *lit->nthArgument(1);
-      newLit = Literal::create2(lit->functor(), true, theta->applyToResult(r), theta->applyToQuery(u));
-    } else {
-      ASS(lit->isNegative());
-      // ~(sθ < uθ)
-      TermList s = *rLit->nthArgument(1);
-      TermList u = *lit->nthArgument(1);
-      newLit = Literal::create2(lit->functor(), false, theta->applyToResult(s), theta->applyToQuery(u));
-    }
-    ASS(newLit);
-
-    (*res)[0] = newLit;
-
-    int next = 1;
-    for (int i = 0; i < premise->length(); ++i) {
-      Literal* curr = (*premise)[i];
-      if (curr != lit) {
-        (*res)[next] = theta->applyToQuery(curr);
-        next += 1;
-      }
-    }
-    // we should have skipped exactly one literal (namely lit)
-    ASS(next == 1 + (premise->length() - 1));
-    for (int i = 0; i < rCl->length(); ++i) {
-      Literal* curr = (*rCl)[i];
-      if (curr != rLit) {
-        (*res)[next] = theta->applyToResult(curr);
-        next += 1;
-      }
-    }
-    ASS(next == 1 + (premise->length() - 1) + (rCl->length() - 1));
-    ASS(next == nlen);
-
-    res->setAge(std::max(premise->age(), rCl->age()) + 1);
-    // res->setPenalty(premise->penalty() + rCl->penalty() + 5);
-
-    return res;
-  });
 
   return pvi(it5);
 }
