@@ -632,20 +632,13 @@ private:
  *
  * @see MappingIterator
  */
-template<typename Inner, typename Functor>
-MappingIterator<Inner,Functor,RETURN_TYPE(Functor)> getMappingIterator(Inner it, Functor f)
-{
-  return MappingIterator<Inner,Functor,RETURN_TYPE(Functor)>(it, f);
-}
-
-/**
- * Return iterator that returns elements of @b it transformed by
- * the lambda @b f
- *
- * @see MappingIterator
- */
-template<typename Inner, typename Functor,typename ResultType>
-MappingIterator<Inner,Functor,ResultType> getMappingIterator(Inner it, std::function<ResultType(Inner)> f)
+template< typename Inner
+        , typename Functor
+        , typename InnerElementType = decltype(std::declval<Inner>().next())
+        , typename ResultType = decltype(std::declval<Functor>()(std::declval<InnerElementType>()))
+        // , typename ResultType = std::invoke_result_t<Functor, InnerElementType>   // nicer version of previous line, but requires C++17
+        >
+MappingIterator<Inner,Functor,ResultType> getMappingIterator(Inner it, Functor f)
 {
   return MappingIterator<Inner,Functor,ResultType>(it, f);
 }
