@@ -53,77 +53,94 @@ enum class term_source {
   result_right
 };
 
-auto mkChainedClauseBuilder(Clause* premise, Literal* lit, bool polarity, term_source left_term, term_source right_term) {
-  CALL("TheoryRuleTransitivity::generateClauses::buildChainedClause");
-
-  ASS(premise->contains(lit));
-
-  return [=](SLQueryResult qr) {
-    CALL("TheoryRuleTransitivity::generateClauses::buildChainedClause(...)");
-
-    ASS_EQ(lit->functor(), qr.literal->functor());
-    ASS_EQ(lit->arity(), 2);
-    ASS_EQ(qr.literal->arity(), 2);
-    ASS(qr.substitution);
-
-    auto const get_term = [lit,qr](term_source src) -> TermList {
-      switch (src) {
-        case term_source::selected_left:
-          return qr.substitution->applyToQuery(*lit->nthArgument(0));
-        case term_source::selected_right:
-          return qr.substitution->applyToQuery(*lit->nthArgument(1));
-        case term_source::result_left:
-          return qr.substitution->applyToResult(*qr.literal->nthArgument(0));
-        case term_source::result_right:
-          return qr.substitution->applyToResult(*qr.literal->nthArgument(1));
-        default:
-          ASSERTION_VIOLATION;
-      }
-    };
-
-    Literal* newLit = Literal::create2(lit->functor(), polarity, get_term(left_term), get_term(right_term));
-
-    // TODO: assumption: no duplicated literals in premise and rCl [but this assumption seems to be pervasive in vampire]
-    // also, there is a DuplicateLiteralRemovalISE that is added in MainLoop. So we probably don't have to worry about that.
-    int const nlen = premise->length() + qr.clause->length() - 1;
-    ASS_GE(nlen, 1);
-
-    Inference* inf = new Inference2(Inference::THEORY_INFERENCE_RULE_TRANSITIVITY, premise, qr.clause);
-    Unit::InputType inputType = std::max(premise->inputType(), qr.clause->inputType());
-    Clause* res = new(nlen) Clause(nlen, inputType, inf);
-
-    (*res)[0] = newLit;
-
-    int next = 1;
-    for (int i = 0; i < premise->length(); ++i) {
-      Literal* curr = (*premise)[i];
-      if (curr != lit) {
-        (*res)[next] = qr.substitution->applyToQuery(curr);
-        next += 1;
-      }
+class ChainedClauseBuilder final
+{
+  public:
+    ChainedClauseBuilder(Clause* premise, Literal* lit, bool polarity, term_source left_term, term_source right_term)
+      : premise(premise)
+      , lit(lit)
+      , polarity(polarity)
+      , left_term(left_term)
+      , right_term(right_term)
+    {
+      ASS(premise->contains(lit));
     }
 
-    // we should have skipped exactly one literal (namely lit)
-    ASS(next == 1 + (premise->length() - 1));
+    Clause* operator()(SLQueryResult qr);
 
-    for (int i = 0; i < qr.clause->length(); ++i) {
-      Literal* curr = (*qr.clause)[i];
-      if (curr != qr.literal) {
-        (*res)[next] = qr.substitution->applyToResult(curr);
-        next += 1;
-      }
-    }
-    ASS(next == 1 + (premise->length() - 1) + (qr.clause->length() - 1));
-    ASS(next == nlen);
-
-    res->setAge(std::max(premise->age(), qr.clause->age()) + 1);
-    // res->setPenalty(premise->penalty() + qr.clause->penalty() + 5);
-
-    return res;
-  };
+  private:
+    Clause* premise;
+    Literal* lit;
+    bool polarity;
+    term_source left_term;
+    term_source right_term;
 };
 
+Clause* ChainedClauseBuilder::operator()(SLQueryResult qr) {
+  CALL("ChainedClauseBuilder::operator()");
+
+  ASS_EQ(lit->functor(), qr.literal->functor());
+  ASS_EQ(lit->arity(), 2);
+  ASS_EQ(qr.literal->arity(), 2);
+  ASS(qr.substitution);
+
+  auto const get_term = [this,qr](term_source src) -> TermList {
+    switch (src) {
+      case term_source::selected_left:
+        return qr.substitution->applyToQuery(*lit->nthArgument(0));
+      case term_source::selected_right:
+        return qr.substitution->applyToQuery(*lit->nthArgument(1));
+      case term_source::result_left:
+        return qr.substitution->applyToResult(*qr.literal->nthArgument(0));
+      case term_source::result_right:
+        return qr.substitution->applyToResult(*qr.literal->nthArgument(1));
+      default:
+        ASSERTION_VIOLATION;
+    }
+  };
+
+  Literal* newLit = Literal::create2(lit->functor(), polarity, get_term(left_term), get_term(right_term));
+
+  // TODO: assumption: no duplicated literals in premise and rCl [but this assumption seems to be pervasive in vampire]
+  // also, there is a DuplicateLiteralRemovalISE that is added in MainLoop. So we probably don't have to worry about that.
+  int const nlen = premise->length() + qr.clause->length() - 1;
+  ASS_GE(nlen, 1);
+
+  Inference* inf = new Inference2(Inference::THEORY_INFERENCE_RULE_TRANSITIVITY, premise, qr.clause);
+  Unit::InputType inputType = std::max(premise->inputType(), qr.clause->inputType());
+  Clause* res = new(nlen) Clause(nlen, inputType, inf);
+
+  (*res)[0] = newLit;
+
+  int next = 1;
+  for (int i = 0; i < premise->length(); ++i) {
+    Literal* curr = (*premise)[i];
+    if (curr != lit) {
+      (*res)[next] = qr.substitution->applyToQuery(curr);
+      next += 1;
+    }
+  }
+
+  // we should have skipped exactly one literal (namely lit)
+  ASS(next == 1 + (premise->length() - 1));
+
+  for (int i = 0; i < qr.clause->length(); ++i) {
+    Literal* curr = (*qr.clause)[i];
+    if (curr != qr.literal) {
+      (*res)[next] = qr.substitution->applyToResult(curr);
+      next += 1;
+    }
+  }
+  ASS(next == 1 + (premise->length() - 1) + (qr.clause->length() - 1));
+  ASS(next == nlen);
+
+  res->setAge(std::max(premise->age(), qr.clause->age()) + 1);
+  // res->setPenalty(premise->penalty() + qr.clause->penalty() + 5);
+
+  return res;
 }
+
+}  // namespace
 
 
 
@@ -175,89 +192,6 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
     return lit->functor() == pred_int_less;
   });
 
-
-
-
-  /*
-  enum class term_source {
-    // The selected literal 'lit' from 'premise'
-    selected_left,
-    selected_right,
-    // The literal returned from the query
-    result_left,
-    result_right
-  };
-
-  // TODO: probably easier to read if we move this outside of the function
-  auto mkChainedClauseBuilder = [premise](Literal* lit, bool polarity, term_source left_term, term_source right_term) {
-    CALL("TheoryRuleTransitivity::generateClauses::buildChainedClause");
-    return [=](SLQueryResult qr) {
-      CALL("TheoryRuleTransitivity::generateClauses::buildChainedClause(...)");
-
-      ASS_EQ(lit->functor(), qr.literal->functor());
-      ASS_EQ(lit->arity(), 2);
-      ASS_EQ(qr.literal->arity(), 2);
-      ASS(qr.substitution);
-
-      auto const get_term = [lit,qr](term_source src) -> TermList {
-        switch (src) {
-          case term_source::selected_left:
-            return qr.substitution->applyToQuery(*lit->nthArgument(0));
-          case term_source::selected_right:
-            return qr.substitution->applyToQuery(*lit->nthArgument(1));
-          case term_source::result_left:
-            return qr.substitution->applyToResult(*qr.literal->nthArgument(0));
-          case term_source::result_right:
-            return qr.substitution->applyToResult(*qr.literal->nthArgument(1));
-          default:
-            ASSERTION_VIOLATION;
-        }
-      };
-
-      Literal* newLit = Literal::create2(lit->functor(), polarity, get_term(left_term), get_term(right_term));
-
-      // TODO: assumption: no duplicated literals in premise and rCl [but this assumption seems to be pervasive in vampire]
-      // also, there is a DuplicateLiteralRemovalISE that is added in MainLoop. So we probably don't have to worry about that.
-      int const nlen = premise->length() + qr.clause->length() - 1;
-      ASS_GE(nlen, 1);
-
-      Inference* inf = new Inference2(Inference::THEORY_INFERENCE_RULE_TRANSITIVITY, premise, qr.clause);
-      Unit::InputType inputType = std::max(premise->inputType(), qr.clause->inputType());
-      Clause* res = new(nlen) Clause(nlen, inputType, inf);
-
-      (*res)[0] = newLit;
-
-      int next = 1;
-      for (int i = 0; i < premise->length(); ++i) {
-        Literal* curr = (*premise)[i];
-        if (curr != lit) {
-          (*res)[next] = qr.substitution->applyToQuery(curr);
-          next += 1;
-        }
-      }
-
-      // we should have skipped exactly one literal (namely lit)
-      ASS(next == 1 + (premise->length() - 1));
-
-      for (int i = 0; i < qr.clause->length(); ++i) {
-        Literal* curr = (*qr.clause)[i];
-        if (curr != qr.literal) {
-          (*res)[next] = qr.substitution->applyToResult(curr);
-          next += 1;
-        }
-      }
-      ASS(next == 1 + (premise->length() - 1) + (qr.clause->length() - 1));
-      ASS(next == nlen);
-
-      res->setAge(std::max(premise->age(), qr.clause->age()) + 1);
-      // res->setPenalty(premise->penalty() + qr.clause->penalty() + 5);
-
-      return res;
-    };
-  };
-  // */
-
-
   GeneratingLiteralIndex* index = _index.get();
 
   // Iterator<Iterator<Clause*>>
@@ -289,26 +223,26 @@ ClauseIterator TheoryRuleTransitivity::generateClauses(Clause* premise)
       // Case 1a
       Literal* query1a = Literal::create2(lit->functor(), true, newVar, *lit->nthArgument(0));  // x < t   (unify with: r < s)
       auto unif1a = index->getUnifications(query1a, false, true);
-      auto res1a = getMappingIterator(unif1a, mkChainedClauseBuilder(premise, lit, true, term_source::result_left, term_source::selected_right));  // r < u
+      auto res1a = getMappingIterator(unif1a, ChainedClauseBuilder(premise, lit, true, term_source::result_left, term_source::selected_right));  // r < u
       // Case 1b
       Literal* query1b = Literal::create2(lit->functor(), true, *lit->nthArgument(1), newVar);  // s < x   (unify with: t < u)
       auto unif1b = index->getUnifications(query1b, false, true);
-      auto res1b = getMappingIterator(unif1b, mkChainedClauseBuilder(premise, lit, true, term_source::selected_left, term_source::result_right));  // r < u
+      auto res1b = getMappingIterator(unif1b, ChainedClauseBuilder(premise, lit, true, term_source::selected_left, term_source::result_right));  // r < u
       // Case 2a
       Literal* query2b = Literal::create2(lit->functor(), false, *lit->nthArgument(0), newVar);  // ~(r < x)   (unify with: ~(t < u))
       auto unif2b = index->getUnifications(query2b, false, true);
-      auto res2b = getMappingIterator(unif2b, mkChainedClauseBuilder(premise, lit, false, term_source::selected_right, term_source::result_right));  // ~(s < u)
+      auto res2b = getMappingIterator(unif2b, ChainedClauseBuilder(premise, lit, false, term_source::selected_right, term_source::result_right));  // ~(s < u)
       return pvi(getConcatenatedIterator(res1a, getConcatenatedIterator(res1b, res2b)));
     } else {
       ASS(lit->isNegative());
       // Case 2a
       Literal* query2a = Literal::create2(lit->functor(), true, *lit->nthArgument(0), newVar);  // t < x   (unify with: r < s)
       auto unif2a = index->getUnifications(query2a, false, true);
-      auto res2a = getMappingIterator(unif2a, mkChainedClauseBuilder(premise, lit, false, term_source::result_right, term_source::selected_right));  // ~(s < u)
+      auto res2a = getMappingIterator(unif2a, ChainedClauseBuilder(premise, lit, false, term_source::result_right, term_source::selected_right));  // ~(s < u)
       return pvi(res2a);
     }
   });
-  static_assert(std::is_same_v<ELEMENT_TYPE(ELEMENT_TYPE(decltype(it3))), Clause*>);
+  static_assert(std::is_same<ELEMENT_TYPE(ELEMENT_TYPE(decltype(it3))), Clause*>::value, "");
 
   // Use a VirtualIterator here because only the specialization of getFlattenedIterator for VirtualIterator<VirtualIterator<T>> is lazy
   // (actually this is only necessary if we use output in the intermediate stages)
@@ -413,7 +347,7 @@ ClauseIterator TheoryRuleTransitivity::generateClausesBroken(Clause* premise)
 
     return pvi(unifIt2);  // need pvi here, otherwise getFlattenedIterator complains
   });
-  static_assert(std::is_same_v<ELEMENT_TYPE(ELEMENT_TYPE(decltype(it3))), std::pair<Literal*, SLQueryResult>>);
+  static_assert(std::is_same<ELEMENT_TYPE(ELEMENT_TYPE(decltype(it3))), std::pair<Literal*, SLQueryResult>>::value, "");
 
   // Use a VirtualIterator here because only the specialization of getFlattenedIterator for VirtualIterator<VirtualIterator<T>> is lazy
   // (actually this is only necessary if we use output in the intermediate stages)
