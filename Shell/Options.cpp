@@ -502,6 +502,11 @@ void Options::Options::init()
     _lookup.insert(&_theoryAxioms);
     _theoryAxioms.tag(OptionTag::PREPROCESSING);
 
+    _theoryRules = BoolOptionValue("theory_rules","thr",false);
+    _theoryRules.description="Enable theory inference rules";  // TODO(JR)
+    _lookup.insert(&_theoryRules);
+    _theoryRules.tag(OptionTag::INFERENCES);
+
     _theoryFlattening = BoolOptionValue("theory_flattening","thf",false);
     _theoryFlattening.description = "Flatten clauses to separate theory and non-theory parts";
     _lookup.insert(&_theoryFlattening);
