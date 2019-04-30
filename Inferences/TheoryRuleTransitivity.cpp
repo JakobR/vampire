@@ -1,22 +1,13 @@
 #include "TheoryRuleTransitivity.hpp"
 
 #include "Indexing/LiteralIndex.hpp"
-// #include "Indexing/LiteralMiniIndex.hpp"
 // #include "Kernel/ColorHelper.hpp"
-// #include "Kernel/EqHelper.hpp"
 #include "Kernel/FormulaVarIterator.hpp"
 #include "Kernel/Inference.hpp"
 #include "Kernel/Signature.hpp"
 #include "Lib/Metaiterators.hpp"
-#include "Lib/PairUtils.hpp"
-// #include "Lib/ScopeGuard.hpp"
-// #include "Lib/STL.hpp"
-// #include "Lib/STLAllocator.hpp"
-// #include "Saturation/SaturationAlgorithm.hpp"
-// #include <array>
-// #include <unordered_map>
-// #include <unordered_set>
-// #include <vector>
+#include "Saturation/SaturationAlgorithm.hpp"
+
 
 using namespace Kernel;
 using namespace Lib;
@@ -28,18 +19,18 @@ void TheoryRuleTransitivity::attach(SaturationAlgorithm* salg)
 {
   CALL("TheoryRuleTransitivity::attach");
   GeneratingInferenceEngine::attach(salg);
-  _index.attach(salg);
+  _index.request(salg->getIndexManager(), GENERATING_SUBST_TREE);
 
   pred_int_less = env.signature->getInterpretingSymbol(Theory::INT_LESS);
 }
 
+
 void TheoryRuleTransitivity::detach()
 {
   CALL("TheoryRuleTransitivity::detach");
-  _index.detach();
+  _index.release();
   GeneratingInferenceEngine::detach();
 }
-
 
 
 namespace {
@@ -141,7 +132,6 @@ Clause* ChainedClauseBuilder::operator()(SLQueryResult qr) const {
 }
 
 }  // namespace
-
 
 
 /**
