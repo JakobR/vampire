@@ -28,6 +28,8 @@
 
 #include "Debug/RuntimeStatistics.hpp"
 
+#include "Kernel/FormulaUnit.hpp"
+
 #include "Lib/Allocator.hpp"
 #include "Lib/DArray.hpp"
 #include "Lib/Environment.hpp"
@@ -66,8 +68,8 @@ bool Clause::_auxInUse = false;
 
 
 /** New clause */
-Clause::Clause(unsigned length,InputType it,Inference* inf)
-  : Unit(Unit::CLAUSE,inf,it),
+Clause::Clause(unsigned length, InputType inputType, Inference* inf, bool isTheoryAxiom)
+  : Unit(Unit::CLAUSE,inf,inputType),
     _length(length),
     _color(COLOR_INVALID),
     _input(0),
@@ -93,31 +95,40 @@ Clause::Clause(unsigned length,InputType it,Inference* inf)
     _auxTimestamp(0)
 {
 
-  if(it == Unit::EXTENSIONALITY_AXIOM){
+  if(inputType == Unit::EXTENSIONALITY_AXIOM){
     //cout << "Setting extensionality" << endl;
     _extensionalityTag = true;
     setInputType(Unit::AXIOM);
   }
-  static bool check = env.options->theoryAxioms() != Options::TheoryAxiomLevel::OFF ||
-                      env.options->induction() != Options::Induction::NONE;
-  if(check){
-    Inference::Iterator it = inf->iterator();
-    bool td = inf->hasNext(it); // td should be false if there are no parents
-    unsigned id = 0; 
-    while(inf->hasNext(it)){
-      Unit* parent = inf->next(it);
-      if(parent->isClause()){
-        td &= static_cast<Clause*>(parent)->isTheoryDescendant();
-        id = max(id,static_cast<Clause*>(parent)->inductionDepth());
+
+  static bool checkParents
+    = env.options->theoryAxioms() != Options::TheoryAxiomLevel::OFF
+    || env.options->induction() != Options::Induction::NONE;
+
+  if (checkParents) {
+    auto it = inf->iterator();
+    if (!inf->hasNext(it)) {
+      // no parents
+      _theoryDescendant = isTheoryAxiom;
+      _inductionDepth = 0;
+    } else {
+      ASS(!isTheoryAxiom);
+      bool td = true;
+      unsigned id = 0;
+      while (inf->hasNext(it)) {
+        Unit* parent = inf->next(it);
+        if (parent->isClause()) {
+          td &= static_cast<Clause*>(parent)->isTheoryDescendant();
+          id = std::max(id, static_cast<Clause*>(parent)->inductionDepth());
+        } else {
+          td &= static_cast<FormulaUnit*>(parent)->isTheoryDescendant();
+        }
       }
-      else{
-        // if a parent is not a clause then it cannot be (i) a theory axiom itself, 
-        // or (ii) a theory descendant clause
-        td = false;
-      }
+      _theoryDescendant = td;
+      _inductionDepth = id;
     }
-    _theoryDescendant=td;
-    _inductionDepth=id;
+  } else {
+    ASS(!isTheoryAxiom);
   }
 
   // TODO(JR):
@@ -209,12 +220,12 @@ void Clause::destroyExceptInferenceObject()
 }
 
 
-Clause* Clause::fromStack(const Stack<Literal*>& lits, InputType it, Inference* inf)
+Clause* Clause::fromStack(const Stack<Literal*>& lits, InputType it, Inference* inf, bool isTheoryAxiom)
 {
   CALL("Clause::fromStack");
 
   unsigned clen = lits.size();
-  Clause* res = new (clen) Clause(clen, it, inf);
+  Clause* res = new (clen) Clause(clen, it, inf, isTheoryAxiom);
 
   for(unsigned i = 0; i < clen; i++) {
     (*res)[i] = lits[i];

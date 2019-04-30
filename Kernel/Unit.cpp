@@ -278,6 +278,18 @@ unsigned Unit::varCnt()
 
 
 /**
+ * Returns whether the unit is a theory axiom or derived from only theory axioms.
+ */
+bool Unit::isTheoryDescendant() const
+{
+  if (isClause()) {
+    return static_cast<Clause const*>(this)->isTheoryDescendant();
+  } else {
+    return static_cast<FormulaUnit const*>(this)->isTheoryDescendant();
+  }
+}
+
+/**
  * Return quantified formula equivalent to the unit.
  *
  * @since 16/01/14, removed BDDNode prop, Giles.

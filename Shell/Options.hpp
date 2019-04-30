@@ -261,9 +261,10 @@ public:
   };
 
   enum class TheoryAxiomLevel : unsigned int {
-    ON,  // all of them
-    OFF, // none of them
-    CHEAP 
+    ON,       // all of them
+    OFF,      // none of them
+    CHEAP,
+    CUSTOM    // like OFF but allow assert-theory in SMTLIB parser
   };
 
   enum class ProofExtra : unsigned int {

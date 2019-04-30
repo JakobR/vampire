@@ -36,6 +36,32 @@ using namespace Lib;
 
 using namespace Kernel;
 
+
+FormulaUnit::FormulaUnit(Formula* f, Inference* inf, InputType inputType, bool isTheoryAxiom)
+  : Unit(FORMULA, inf, inputType)
+  , _formula(f)
+  , _cachedColor(COLOR_INVALID)
+  , _cachedWeight(0)
+  , _theoryDescendant(false)
+{
+  auto it = inf->iterator();
+  if (!inf->hasNext(it)) {
+    // no parents
+    _theoryDescendant = isTheoryAxiom;
+  } else {
+    ASS(!isTheoryAxiom);  // cannot be a theory axioms if we have parents
+    bool td = true;
+    while (inf->hasNext(it)) {
+      Unit* parent = inf->next(it);
+      td &= parent->isTheoryDescendant();
+      // TODO: preprocessing might use other parents that are no theory descendants (e.g. skolemization)
+      // TODO: check if inputType is preserved after preprocessing
+    }
+    _theoryDescendant = td;
+  }
+}
+
+
 /**
  * Destroy the unit by deleting it.
  * @since 19/05/2007 Manchester

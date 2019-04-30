@@ -133,6 +133,8 @@ public:
   Color getColor();
   unsigned getWeight();
 
+  bool isTheoryDescendant() const;
+
   Formula* getFormula();
   void collectAtoms(Stack<Literal*>& acc);
   void collectPredicates(Stack<unsigned>& acc);
