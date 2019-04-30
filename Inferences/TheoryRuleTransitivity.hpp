@@ -2,8 +2,8 @@
 #define THEORYRULETRANSITIVITY_HPP
 
 #include "Inferences/InferenceEngine.hpp"
-#include "Inferences/ForwardSubsumptionDemodulation.hpp"
 #include "Indexing/LiteralIndex.hpp"
+#include "Indexing/RequestedIndex.hpp"
 
 namespace Inferences {
 
@@ -27,7 +27,7 @@ class TheoryRuleTransitivity
 
   private:
     // The GeneratingLiteralIndex indexes clauses by their selected literals
-    RequestedIndex<GeneratingLiteralIndex, GENERATING_SUBST_TREE> _index;
+    RequestedIndex<GeneratingLiteralIndex> _index;
 
     unsigned pred_int_less;
 
