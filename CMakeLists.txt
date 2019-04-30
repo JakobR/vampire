@@ -728,7 +728,7 @@ set(VAMPIRE_SOURCES
     ${VAMPIRE_CASC_SOURCES}
     # Test/CheckedSatSolver.cpp
     # Test/CheckedSatSolver.hpp
-    global.cpp
+    Global.cpp
     vampire.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/version.cpp"
     )
