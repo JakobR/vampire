@@ -114,6 +114,35 @@ namespace Shell {
     bool _allowsCyclicTerms;
     ConstructorArray _constrs;
   };
+
+  class BadNatTermAlgebra : public Lib::Exception {
+    public:
+      explicit BadNatTermAlgebra(char const* msg)
+        : Lib::Exception(msg)
+      { }
+  };
+
+  class NatTermAlgebra {
+    public:
+      CLASS_NAME(NatTermAlgebra);
+      USE_ALLOCATOR(NatTermAlgebra);
+
+      /** May throw BadNatTermAlgebra */
+      NatTermAlgebra(TermAlgebra* ta);
+
+      TermAlgebra* termAlgebra() { return _ta; }
+      TermAlgebraConstructor* getZeroConstructor() { return _zero; }
+      TermAlgebraConstructor* getSuccConstructor() { return _succ; }
+
+      /** $less for nat */
+      unsigned getLessPredicate() { return _ta->getSubtermPredicate(); }
+
+    private:
+      TermAlgebra* _ta;
+      TermAlgebraConstructor* _zero;
+      TermAlgebraConstructor* _succ;
+  };
+
 }
 
 #endif

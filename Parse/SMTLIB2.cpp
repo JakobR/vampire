@@ -985,6 +985,18 @@ void SMTLIB2::readDeclareDatatypes(LExprList* sorts, LExprList* datatypes, bool 
       USER_ERROR("Datatype " + taName + " defines an empty sort");
     }
 
+    if (taName == "nat()") {
+      // std::cerr << "Treating datatype " << taName << " as natural numbers" << std::endl;
+      try {
+        NatTermAlgebra* nta = new NatTermAlgebra(ta);
+        // std::cerr << "Datatype " << taName << ": zero is: " << env.signature->functionName(nta->getZeroConstructor()->functor()) << std::endl;
+        // std::cerr << "Datatype " << taName << ": successor is: " << env.signature->functionName(nta->getSuccConstructor()->functor()) << std::endl;
+        env.signature->setNat(nta);
+      } catch (BadNatTermAlgebra const& e) {
+        USER_ERROR("Datatype " + taName + " is being interpreted as natural numbers, but the given definition is invalid: " + e.msg());
+      }
+    }
+
     env.signature->addTermAlgebra(ta);
   }
 }
