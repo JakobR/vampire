@@ -746,8 +746,9 @@ bool ForwardSubsumptionDemodulation::perform(Clause* cl, Clause*& replacement, C
                     // (After the other optimizations, this is no issue anymore for our oxford-fsd example.
                     //  "FSD after FS" eliminated most of the equality tautologies.;
                     //  the "dlit == eqLit" check eliminated the rest.)
-                    continue;
-                    // return false;
+                    // NOTE:
+                    // Actually, when we get an equality tautology, it means the given clause can be deleted.
+                    // So it's actually good if we end up in this case.
 
                     premises = pvi(getSingletonIterator(mcl));
                     replacement = nullptr;
