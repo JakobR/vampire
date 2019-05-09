@@ -111,17 +111,29 @@ void SimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
   }
 }
 
-
-/// A literal and its rating.
-/// Ordered by ratings, breaking ties with the literal's pointer values.
-class RatedLiteral
+/**
+ * A literal and its rating (for use in the subsumption index).
+ * Ordered by ratings, breaking ties with the literal's pointer values.
+ *
+ * On the metric used to select the best literal:
+ *
+ *    val == #symbols - #distinct-variables
+ *        == #non-variable-symbols + #variable-duplicates
+ *
+ * This value is the number of symbols that induce constraints for matching.
+ * (Note that variables only induce constraints for instantiation on their repeated occurrences)
+ * We want to maximize this value to have the most restricting literal,
+ * so we get as little matches as possible (because the matches then have
+ * to be passed to the MLMatcher which is expensive).
+ */
+class SubsRatedLiteral
 {
   private:
     Literal* m_lit;
     unsigned m_val;
 
   public:
-    RatedLiteral(Literal* lit)
+    SubsRatedLiteral(Literal* lit)
       : m_lit(lit), m_val(computeRating(lit))
     { }
 
@@ -129,21 +141,21 @@ class RatedLiteral
 
     Literal* lit() const { return m_lit; }
 
-    bool operator<(RatedLiteral const& other) const
+    bool operator<(SubsRatedLiteral const& other) const
     {
       return m_val < other.m_val || (m_val == other.m_val && m_lit < other.m_lit);
     }
-    bool operator>(RatedLiteral const& other) const { return other.operator<(*this); }
-    bool operator<=(RatedLiteral const& other) const { return !operator>(other); }
-    bool operator>=(RatedLiteral const& other) const { return !operator<(other); }
-    bool operator==(RatedLiteral const& other) const { return m_lit == other.m_lit; }
-    bool operator!=(RatedLiteral const& other) const { return !operator==(other); }
+    bool operator>(SubsRatedLiteral const& other) const { return other.operator<(*this); }
+    bool operator<=(SubsRatedLiteral const& other) const { return !operator>(other); }
+    bool operator>=(SubsRatedLiteral const& other) const { return !operator<(other); }
+    bool operator==(SubsRatedLiteral const& other) const { return m_lit == other.m_lit; }
+    bool operator!=(SubsRatedLiteral const& other) const { return !operator==(other); }
 
-    static RatedLiteral find_best_in(Clause* c)
+    static SubsRatedLiteral find_best_in(Clause* c)
     {
-      RatedLiteral best{(*c)[0]};
+      SubsRatedLiteral best{(*c)[0]};
       for (unsigned i = 1; i < c->length(); ++i) {
-        RatedLiteral curr{(*c)[i]};
+        SubsRatedLiteral curr{(*c)[i]};
         if (curr > best) {
           best = curr;
         }
@@ -151,15 +163,15 @@ class RatedLiteral
       return best;
     }
 
-    static std::pair<RatedLiteral,RatedLiteral> find_best2_in(Clause* c)
+    static std::pair<SubsRatedLiteral,SubsRatedLiteral> find_best2_in(Clause* c)
     {
-      RatedLiteral best{(*c)[0]};
-      RatedLiteral secondBest{(*c)[1]};
+      SubsRatedLiteral best{(*c)[0]};
+      SubsRatedLiteral secondBest{(*c)[1]};
       if (secondBest > best) {
         std::swap(best, secondBest);
       }
       for (unsigned i = 2; i < c->length(); ++i) {
-        RatedLiteral curr{(*c)[i]};
+        SubsRatedLiteral curr{(*c)[i]};
         if (curr > best) {
           secondBest = best;
           best = curr;
@@ -176,29 +188,17 @@ class RatedLiteral
 void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 {
   CALL("FwSubsSimplifyingLiteralIndex::handleClause");
-
-  unsigned const clen = c->length();
-  if (clen < 2) {
-    return;
-  }
   TimeCounter tc(TC_FORWARD_SUBSUMPTION_INDEX_MAINTENANCE);
 
-  // On the metric used to select the best literal:
-  //
-  //    val == #symbols - #distinct-variables
-  //        == #non-variable-symbols + #variable-duplicates
-  //
-  // This value is the "number of symbols that induce constraints for matching".
-  // (Note that variables only induce constraints for instantiation on their repeated occurrences)
-  // We want to maximize this value to have the most restricting literal,
-  // so we get as little matches as possible (because the matches then have
-  // to be passed to the MLMatcher which is expensive).
+  if (c->length() < 2) {
+    return;
+  }
 
   if (!adjustForFSD) {
-    Literal* best = RatedLiteral::find_best_in(c).lit();
+    Literal* best = SubsRatedLiteral::find_best_in(c).lit();
     handleLiteral(best, c, adding);
   } else {
-    auto res = RatedLiteral::find_best2_in(c);
+    auto res = SubsRatedLiteral::find_best2_in(c);
     Literal* best = res.first.lit();
     Literal* secondBest = res.second.lit();
     handleLiteral(best, c, adding);
@@ -219,12 +219,11 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 void FSDSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 {
   CALL("FSDSimplifyingLiteralIndex::handleClause");
+  TimeCounter tc(TC_FORWARD_SUBSUMPTION_DEMODULATION_INDEX_MAINTENANCE);
 
-  unsigned const clen = c->length();
-  if (clen < 2) {
+  if (c->length() < 2) {
     return;
   }
-  TimeCounter tc(TC_FORWARD_SUBSUMPTION_DEMODULATION_INDEX_MAINTENANCE);
 
   bool hasEquality = false;
   for (unsigned i = 0; i < c->length(); ++i) {
@@ -238,7 +237,7 @@ void FSDSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
     return;
   }
 
-  auto res = RatedLiteral::find_best2_in(c);
+  auto res = SubsRatedLiteral::find_best2_in(c);
   Literal* best = res.first.lit();
   Literal* secondBest = res.second.lit();
   if (!best->isEquality()) {
