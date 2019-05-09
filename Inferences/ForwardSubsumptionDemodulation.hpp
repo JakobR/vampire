@@ -46,8 +46,6 @@ class ForwardSubsumptionDemodulation
 
     bool _preorderedOnly;
     bool _performRedundancyCheck;
-
-    void testSomeStuff();
 };
 
 

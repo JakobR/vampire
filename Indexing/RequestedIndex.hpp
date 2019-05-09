@@ -10,7 +10,7 @@ namespace Indexing {
 
 
 template <typename Index>
-class RequestedIndex
+class RequestedIndex final
 {
   public:
     CLASS_NAME(RequestedIndex);
@@ -55,7 +55,7 @@ class RequestedIndex
       ASS(_index != nullptr);  // if this fails, the wrong index type was requested
     }
 
-    // release() might be called multiple times (manually and by destructor)
+    // NOTE: release() might be called multiple times (manually and by destructor)
     void release()
     {
       _index = nullptr;
