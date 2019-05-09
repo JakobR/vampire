@@ -271,7 +271,7 @@ void SLQueryBackwardSubsumption::perform(Clause* cl,
     }
 
     RSTAT_CTR_INC("bs1 3 final check");
-    if(MLMatcher::canBeMatched(cl,icl,matchedLits.array())) {
+    if(MLMatcher::canBeMatched(cl,icl,matchedLits.array(),0)) {
       ClauseList::push(icl, subsumed);
       env.statistics->backwardSubsumed++;
       RSTAT_CTR_INC("bs1 4 performed");

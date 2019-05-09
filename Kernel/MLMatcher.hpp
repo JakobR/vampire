@@ -11,9 +11,9 @@
  *
  * In summary, you are allowed to use Vampire for non-commercial
  * purposes but not allowed to distribute, modify, copy, create derivatives,
- * or use in competitions. 
+ * or use in competitions.
  * For other uses of Vampire please contact developers for a different
- * licence, which we will make an effort to provide. 
+ * licence, which we will make an effort to provide.
  */
 /**
  * @file MLMatcher.hpp
@@ -110,7 +110,7 @@ class MLMatcher
     MLMatcher(MLMatcher const&) = delete;
     MLMatcher& operator=(MLMatcher const&) = delete;
 
-    // Moving works by just moving the pointer m_impl
+    // Moving works by moving the pointer m_impl
     MLMatcher(MLMatcher&&) = default;
     MLMatcher& operator=(MLMatcher&&) = default;
 
@@ -119,29 +119,14 @@ class MLMatcher
     std::unique_ptr<Impl> m_impl;
 
   public:
-    // Helper functions for compatibility to previous code. These work with a shared static instance of MLMatcher::Impl.
-    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList* alts[], Literal* resolvedLit)
-    {
-      return canBeMatched(base->literals(), base->length(), instance, alts, resolvedLit);
-    }
+    /// Helper function for compatibility to previous code. It works with a shared static instance of MLMatcher::Impl.
+    static bool canBeMatched(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], Literal* resolvedLit, bool multiset);
 
-    static bool canBeMatched(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], Literal* resolvedLit)
+    /// Helper function for compatibility to previous code. It works with a shared static instance of MLMatcher::Impl.
+    static bool canBeMatched(Clause* base,                          Clause* instance, LiteralList* alts[], Literal* resolvedLit)
     {
-      return canBeMatchedImpl(baseLits, baseLen, instance, alts, resolvedLit, resolvedLit == nullptr);
+      return canBeMatched(base->literals(), base->length(), instance, alts, resolvedLit, resolvedLit == nullptr);
     }
-
-    static bool canBeMatched(Clause* base,                         Clause* instance, LiteralList* alts[], bool multiset = false)
-    {
-      return canBeMatched(base->literals(), base->length(), instance, alts, multiset);
-    }
-
-    static bool canBeMatched(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], bool multiset = false)
-    {
-      return canBeMatchedImpl(baseLits, baseLen, instance, alts, nullptr, multiset);
-    }
-
-  private:
-    static bool canBeMatchedImpl(Literal* baseLits[], unsigned baseLen, Clause* instance, LiteralList* alts[], Literal* resolvedLit, bool multiset);
 };
 
 

@@ -374,7 +374,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
           continue;
         }
 
-        if (MLMatcher::canBeMatched(mcl, cl, cms->_matches, true)
+        if (MLMatcher::canBeMatched(mcl, cl, cms->_matches, nullptr)
             && ColorHelper::compatible(cl->color(), mcl->color())
             ) {
           // Done with subsumption (cl is subsumed, so replacement stays empty because we just delete cl)
