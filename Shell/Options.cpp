@@ -1205,6 +1205,7 @@ void Options::Options::init()
     _forwardSubsumptionDemodulationUseSeparateIndex.description = "Whether to use a separate index for forward sumsumption demodulation.";
     _lookup.insert(&_forwardSubsumptionDemodulationUseSeparateIndex);
     _forwardSubsumptionDemodulationUseSeparateIndex.tag(OptionTag::INFERENCES);
+    _forwardSubsumptionDemodulationUseSeparateIndex.setRandomChoices({"on","off"});
     _forwardSubsumptionDemodulationUseSeparateIndex.setExperimental();
 
     _hyperSuperposition = BoolOptionValue("hyper_superposition","",false);

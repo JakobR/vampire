@@ -188,11 +188,12 @@ class SubsRatedLiteral
 void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 {
   CALL("FwSubsSimplifyingLiteralIndex::handleClause");
-  TimeCounter tc(TC_FORWARD_SUBSUMPTION_INDEX_MAINTENANCE);
 
   if (c->length() < 2) {
     return;
   }
+
+  TimeCounter tc(TC_FORWARD_SUBSUMPTION_INDEX_MAINTENANCE);
 
   if (!adjustForFSD) {
     Literal* best = SubsRatedLiteral::find_best_in(c).lit();
@@ -219,11 +220,12 @@ void FwSubsSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 void FSDSimplifyingLiteralIndex::handleClause(Clause* c, bool adding)
 {
   CALL("FSDSimplifyingLiteralIndex::handleClause");
-  TimeCounter tc(TC_FORWARD_SUBSUMPTION_DEMODULATION_INDEX_MAINTENANCE);
 
   if (c->length() < 2) {
     return;
   }
+
+  TimeCounter tc(TC_FORWARD_SUBSUMPTION_DEMODULATION_INDEX_MAINTENANCE);
 
   bool hasEquality = false;
   for (unsigned i = 0; i < c->length(); ++i) {
