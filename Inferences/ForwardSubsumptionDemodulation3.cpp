@@ -229,9 +229,11 @@ bool ForwardSubsumptionDemodulation3::perform(Clause* cl, Clause*& replacement, 
           // Note that we should always apply Forward Subsumption if possible,
           // because it is a deletion rule; and Forward Subsumption should be performed before FSD.
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
-          OverlayBinder tmpBinder;
-          matcher.getBindings(tmpBinder.base());
-          ASS(SDHelper::substClauseIsSmallerOrEqual(mcl, tmpBinder, cl, ordering));
+          if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {
+            OverlayBinder tmpBinder;
+            matcher.getBindings(tmpBinder.base());
+            ASS(SDHelper::substClauseIsSmallerOrEqual(mcl, tmpBinder, cl, ordering));
+          }
 #endif
           ASS(replacement == nullptr);
           premises = pvi(getSingletonIterator(mcl));
@@ -504,7 +506,9 @@ bool ForwardSubsumptionDemodulation3::perform(Clause* cl, Clause*& replacement, 
                     // Here, we have subsumption
                     ASS_EQ(binder.applyTo(eqLit), dlit);  // eqLitS == dlit
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
-                    ASS(SDHelper::substClauseIsSmallerOrEqual(mcl, binder, cl, ordering));
+                    if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {
+                      ASS(SDHelper::substClauseIsSmallerOrEqual(mcl, binder, cl, ordering));
+                    }
 #endif
                     ASS(replacement == nullptr);
                     premises = pvi(getSingletonIterator(mcl));
@@ -517,10 +521,12 @@ bool ForwardSubsumptionDemodulation3::perform(Clause* cl, Clause*& replacement, 
                     ASS(SDHelper::checkForSubsumptionResolution(cl, cm, dlit));
                     replacement = SDHelper::generateSubsumptionResolutionClause(cl, dlit, mcl);
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
-                    // Note that mclθ < cl does not always hold here,
-                    // but we don't need it to ensure redundancy of cl
-                    // because cl is already entailed by replacement alone
-                    ASS(SDHelper::clauseIsSmaller(replacement, cl, ordering));
+                    if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {
+                      // Note that mclθ < cl does not always hold here,
+                      // but we don't need it to ensure redundancy of cl
+                      // because cl is already entailed by replacement alone
+                      ASS(SDHelper::clauseIsSmaller(replacement, cl, ordering));
+                    }
 #endif
                     premises = pvi(getSingletonIterator(mcl));
                     env.statistics->forwardSubsumptionResolution++;
@@ -631,7 +637,7 @@ isRedundant:
               RSTAT_MCTR_INC("FSDv3, successes by MLMatch", numMatches + 1);  // +1 so it fits with the previous output
 
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
-              if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {  // see note above
+              if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {
                 // Check newCl < cl.
                 // This is quite obvious, and there should be no problems with this.
                 ASS(SDHelper::clauseIsSmaller(newCl, cl, ordering));
@@ -666,7 +672,9 @@ isRedundant:
         if (ColorHelper::compatible(cl->color(), mcl->color())) {
           Clause* resCl = SDHelper::generateSubsumptionResolutionClause(cl, resLit, mcl);
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
-          ASS(SDHelper::clauseIsSmaller(resCl, cl, ordering));
+          if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {
+            ASS(SDHelper::clauseIsSmaller(resCl, cl, ordering));
+          }
 #endif
           env.statistics->forwardSubsumptionResolution++;
           premises = pvi(getSingletonIterator(mcl));
@@ -684,7 +692,9 @@ isRedundant:
         if (ColorHelper::compatible(cl->color(), mcl->color()) && SDHelper::checkForSubsumptionResolution(cl, cm, resLit)) {
           Clause* resCl = SDHelper::generateSubsumptionResolutionClause(cl, resLit, mcl);
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
-          ASS(SDHelper::clauseIsSmaller(resCl, cl, ordering));
+          if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {
+            ASS(SDHelper::clauseIsSmaller(resCl, cl, ordering));
+          }
 #endif
           env.statistics->forwardSubsumptionResolution++;
           premises = pvi(getSingletonIterator(mcl));
@@ -722,7 +732,9 @@ isRedundant:
         if (ColorHelper::compatible(cl->color(), mcl->color()) && SDHelper::checkForSubsumptionResolution(cl, cm, resLit)) {
           Clause* resCl = SDHelper::generateSubsumptionResolutionClause(cl, resLit, mcl);
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
-          ASS(SDHelper::clauseIsSmaller(resCl, cl, ordering));
+          if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {
+            ASS(SDHelper::clauseIsSmaller(resCl, cl, ordering));
+          }
 #endif
           env.statistics->forwardSubsumptionResolution++;
           premises = pvi(getSingletonIterator(mcl));
