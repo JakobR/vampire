@@ -267,6 +267,17 @@ struct MatchingData final {
    */
   unsigned eqLitForDemodulation;
 
+  // TODO
+  // Additional variables for the term matched to eqLitForDemodulation:
+  // dlit -- index to base literal with term to be demodulated (be sure to strike this out of the alts for later literals -- but only later, when a suitable term was chosen too)
+  // term -- the term that is to be rewritten
+  // TermIterator -- the current position in dlit, so we know what to try next when if we have to backtrack
+  // a set of already tried terms
+  // an ArrayStoringBinder for the substitution LHS->term ... but what about the variables in RHS????
+  //                                                      if we want to reuse the intersectinfo we need to do something about this.
+  //                => delay selection of LHS/term until either: all RHS vars are in LHS or have been set previously?
+  //                   (this might give us different depths for LHS/RHS choices?)
+
   /**
    * Stores the variables that are common to any two base literals.
    * See function 'getIntersectInfo'.
