@@ -50,6 +50,12 @@
 
 #include "ForwardSubsumptionAndResolution.hpp"
 
+
+#define FS_STATS VDEBUG
+
+
+
+
 extern bool reporting;
 
 namespace Inferences
@@ -251,6 +257,7 @@ bool checkForSubsumptionResolution(Clause* cl, ClauseMatches* cms, Literal* resL
   return MLMatcher::canBeMatched(mcl,cl,cms->_matches,resLit);
 }
 
+#if FS_STATS
 struct FSCandidate
 {
   CLASS_NAME(FSCandidate);
@@ -297,11 +304,14 @@ std::ostream& operator<<(std::ostream& os, FSStats const& stats)
   os << "] }";
   return os;
 }
+#endif
 
 bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
 {
   CALL("ForwardSubsumptionAndResolution::perform");
+#if FS_STATS
   std::unique_ptr<FSStats> stats;
+#endif
 
   Clause* resolutionClause=0;
 
@@ -339,6 +349,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
   {
   LiteralMiniIndex miniIndex(cl);
 
+#if FS_STATS
   stats = make_unique<FSStats>();
   stats->given = cl;
   for(unsigned li=0;li<clen;li++) {
@@ -350,6 +361,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
     }
   }
   RSTAT_MCTR_INC("FS by non-unit candidates", stats->candidates.size());
+#endif
 
   for(unsigned li=0;li<clen;li++) {
     SLQueryResultIterator rit=_fwIndex->getGeneralizations( (*cl)[li], false, false);
@@ -360,14 +372,27 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
 
       if(mcl->hasAux()) {
 	//we've already checked this clause
+#if FS_STATS
+        ASS_G(stats->candidates[mcl].discardedAt, 0);
+#endif
 	continue;
       }
 
+#if FS_STATS
       // We start stats after the aux-check so we represent each candidate only once (the code tree would also only consider each candidate once)
       FSCandidate& cstats = stats->candidates[mcl];
 
+      if (mcl->length() > cl->length()) {  // why was this check missing? well, since FSR does subset (not submultiset), we will need the clausematches for FSR later anyways. but the time should be counted to FSR imo.
+        cstats.discardedAt = 5;
+        continue;
+      }
+#endif
+
       if (_fwIndex->isSecondBest(res.clause, res.literal)) {
+        ASSERTION_VIOLATION;
+#if FS_STATS
         cstats.discardedAt = 1;
+#endif
         continue;
       }
       unsigned mlen=mcl->length();
@@ -381,7 +406,9 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       cms->fillInMatches(&miniIndex);
 
       if(cms->anyNonMatched()) {
+#if FS_STATS
         cstats.discardedAt = 2;
+#endif
 	continue;
       }
 
@@ -389,9 +416,17 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
         premises = pvi( getSingletonIterator(mcl) );
         env.statistics->forwardSubsumed++;
         result = true;
+#if FS_STATS
         cstats.discardedAt = 0;
+#endif
         goto fin;
+      } else {
+#if FS_STATS
+        cstats.discardedAt = 3;
+#endif
+        continue;
       }
+      ASSERTION_VIOLATION;
     }
   }
 
@@ -473,11 +508,13 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
   }
 
 fin:
+#if FS_STATS
   if (stats) {
     env.beginOutput();
     env.out() << *stats << std::endl;
     env.endOutput();
   }
+#endif
   Clause::releaseAux();
   while(cmStore.isNonEmpty()) {
     delete cmStore.pop();
