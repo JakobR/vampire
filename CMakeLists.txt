@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.13.2)
+cmake_minimum_required (VERSION 3.5.1)
 
 project(Vampire)
 
@@ -6,11 +6,21 @@ project(Vampire)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+#static
+option(BUILD_SHARED_LIBS "Build an executable dynamically linking to libraries instead of a statically-linked one (static not working on Mac)" ON)
+if (NOT BUILD_SHARED_LIBS)
+  SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+  SET(CMAKE_EXE_LINKER_FLAGS "-static")
+endif()
+
+#debug flags
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DVDEBUG=1 -DUNIX_USE_SIGALRM=1 -DGNUMP=0 ")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -DVDEBUG=0")
+
 # support sourcetrail
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(
-    "-Wno-exceptions"  # there's just too many warnings if this is enabled
     # "-ftrapv"
     # "-pedantic"
     # "-Wall"
@@ -23,6 +33,17 @@ add_compile_options(
     # "$<$<CONFIG:RELEASE>:-O3>"
 )
 
+# adjust warnings -- compiler dependent
+# -- see also https://cmake.org/pipermail/cmake/2016-May/063452.html
+if(CMAKE_COMPILER_IS_GNUCXX)
+  add_compile_options("-Wno-terminate")
+endif()
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")  # use MATCHES instead of equality because the value is "AppleClang" on macOS
+  add_compile_options("-Wno-exceptions")
+endif()
+
+
+
 # add directoy, where we store all custom files for finding libraries which are not build using cmake (i.e. currently z3 only), to the search path of cmake
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
@@ -32,15 +53,6 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 # Set the output folder where the binary will be created (i.e. build/dir)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-
-################################################################
-# z3 stuff
-################################################################
-# TODO: one could also add automatic installation of z3 and minisat (cf. github-seahorn solution)
-#find_package(Z3 REQUIRED)
-#include_directories(${Z3_INCLUDE_DIR})
-#add_library(Z3 SHARED IMPORTED)
-#set_property(TARGET Z3 PROPERTY IMPORTED_LOCATION ${Z3_LIBRARY})
 
 
 
@@ -112,7 +124,7 @@ set(VAMPIRE_LIB_SOURCES
     Lib/Environment.cpp
     Lib/Event.cpp
     Lib/Exception.cpp
-    #Lib/Graph.cpp
+#    Lib/Graph.cpp
     Lib/Hash.cpp
     Lib/Int.cpp
     Lib/IntNameTable.cpp
@@ -120,7 +132,7 @@ set(VAMPIRE_LIB_SOURCES
     Lib/MemoryLeak.cpp
     Lib/MultiCounter.cpp
     Lib/NameArray.cpp
-    #Lib/OptionsReader.cpp
+#    Lib/OptionsReader.cpp
     Lib/Random.cpp
     Lib/StringUtils.cpp
     Lib/System.cpp
@@ -150,7 +162,7 @@ set(VAMPIRE_LIB_SOURCES
     Lib/Exception.hpp
     Lib/fdstream.hpp
     Lib/FreshnessGuard.hpp
-    #Lib/Graph.hpp
+#    Lib/Graph.hpp
     Lib/Hash.hpp
     Lib/ImplicationSetClosure.hpp
     Lib/InPlaceStack.hpp
@@ -170,7 +182,7 @@ set(VAMPIRE_LIB_SOURCES
     Lib/MultiCounter.hpp
     Lib/NameArray.hpp
     Lib/Numbering.hpp
-    #Lib/OptionsReader.hpp
+#    Lib/OptionsReader.hpp
     Lib/PairUtils.hpp
     Lib/Portability.hpp
     Lib/Random.hpp
@@ -231,7 +243,7 @@ set(VAMPIRE_KERNEL_SOURCES
     Kernel/LiteralSelector.cpp
     Kernel/LookaheadLiteralSelector.cpp
     Kernel/MainLoop.cpp
-    #Kernel/MatchTag.cpp
+#    Kernel/MatchTag.cpp
     Kernel/Matcher.cpp
     Kernel/MaximalLiteralSelector.cpp
     Kernel/MLMatcher.cpp
@@ -252,11 +264,11 @@ set(VAMPIRE_KERNEL_SOURCES
     Kernel/TermIterators.cpp
     Kernel/TermTransformer.cpp
     Kernel/Theory.cpp
-    #Kernel/Assignment.cpp
-    #Kernel/Constraint.cpp
-    #Kernel/Number.cpp
-    #Kernel/Rational.cpp
-    #Kernel/V2CIndex.cpp
+#    Kernel/Assignment.cpp
+#    Kernel/Constraint.cpp
+#    Kernel/Number.cpp
+#    Kernel/Rational.cpp
+#    Kernel/V2CIndex.cpp
     Kernel/Signature.cpp
     Kernel/Unit.cpp
     Kernel/BestLiteralSelector.hpp
@@ -282,7 +294,7 @@ set(VAMPIRE_KERNEL_SOURCES
     Kernel/LiteralSelector.hpp
     Kernel/LookaheadLiteralSelector.hpp
     Kernel/MainLoop.hpp
-    #Kernel/MatchTag.hpp
+#    Kernel/MatchTag.hpp
     Kernel/Matcher.hpp
     Kernel/MaximalLiteralSelector.hpp
     Kernel/MLMatcher.hpp
@@ -303,11 +315,11 @@ set(VAMPIRE_KERNEL_SOURCES
     Kernel/TermIterators.hpp
     Kernel/TermTransformer.hpp
     Kernel/Theory.hpp
-    #Kernel/Assignment.hpp
-    #Kernel/Constraint.hpp
-    #Kernel/Number.hpp
-    #Kernel/Rational.hpp
-    #Kernel/V2CIndex.hpp
+#    Kernel/Assignment.hpp
+#    Kernel/Constraint.hpp
+#    Kernel/Number.hpp
+#    Kernel/Rational.hpp
+#    Kernel/V2CIndex.hpp
     Kernel/Signature.hpp
     Kernel/Unit.hpp
     Kernel/LPO.cpp
@@ -321,7 +333,7 @@ set(VAMPIRE_INDEXING_SOURCES
     Indexing/ClauseVariantIndex.cpp
     Indexing/CodeTree.cpp
     Indexing/CodeTreeInterfaces.cpp
-    #Indexing/FormulaIndex.cpp
+#    Indexing/FormulaIndex.cpp
     Indexing/GroundingIndex.cpp
     Indexing/Index.cpp
     Indexing/IndexManager.cpp
@@ -342,7 +354,7 @@ set(VAMPIRE_INDEXING_SOURCES
     Indexing/ClauseVariantIndex.hpp
     Indexing/CodeTree.hpp
     Indexing/CodeTreeInterfaces.hpp
-    #Indexing/FormulaIndex.hpp
+    Indexing/FormulaIndex.hpp
     Indexing/GroundingIndex.hpp
     Indexing/Index.hpp
     Indexing/IndexManager.hpp
@@ -365,7 +377,7 @@ set(VAMPIRE_INFERENCE_SOURCES
     Inferences/BackwardSubsumptionResolution.cpp
     Inferences/BinaryResolution.cpp
     Inferences/Condensation.cpp
-    #Inferences/CTFwSubsAndRes.cpp
+#    Inferences/CTFwSubsAndRes.cpp
     Inferences/DistinctEqualitySimplifier.cpp
     Inferences/EqualityFactoring.cpp
     Inferences/EqualityResolution.cpp
@@ -393,7 +405,7 @@ set(VAMPIRE_INFERENCE_SOURCES
     Inferences/BackwardSubsumptionResolution.hpp
     Inferences/BinaryResolution.hpp
     Inferences/Condensation.hpp
-    #Inferences/CTFwSubsAndRes.hpp
+#    Inferences/CTFwSubsAndRes.hpp
     Inferences/DistinctEqualitySimplifier.hpp
     Inferences/EqualityFactoring.hpp
     Inferences/EqualityResolution.hpp
@@ -417,11 +429,7 @@ set(VAMPIRE_INFERENCE_SOURCES
     Inferences/TermAlgebraReasoning.hpp
     Inferences/URResolution.hpp
     Inferences/TheoryInstAndSimp.hpp
-    Inferences/TheoryInstAndSimp.cpp
-    # Inferences/TheoryRuleAttempt.cpp
-    # Inferences/TheoryRuleAttempt.hpp
-    # Inferences/TheoryRuleTransitivity.cpp
-    # Inferences/TheoryRuleTransitivity.hpp
+    Inferences/TheoryInstAndSimp.cpp  # this is theory instantiation
     Inferences/SubsumptionDemodulationHelper.cpp
     Inferences/SubsumptionDemodulationHelper.hpp
     Inferences/ForwardSubsumptionDemodulation.cpp
@@ -490,6 +498,7 @@ source_group(decision_procedures_source_files FILES ${VAMPIRE_DECISION_PROCEDURE
 
 set(VAMPIRE_SATURATION_SOURCES
     Saturation/AWPassiveClauseContainer.cpp
+    Saturation/ManCSPassiveClauseContainer.cpp
     Saturation/ClauseContainer.cpp
     Saturation/ConsequenceFinder.cpp
     Saturation/Discount.cpp
@@ -515,8 +524,6 @@ set(VAMPIRE_SATURATION_SOURCES
     Saturation/SaturationAlgorithm.hpp
     Saturation/Splitter.hpp
     Saturation/SymElOutput.hpp
-    Saturation/ManCSPassiveClauseContainer.cpp
-    Saturation/ManCSPassiveClauseContainer.hpp
     )
 source_group(saturation_source_files FILES ${VAMPIRE_SATURATION_SOURCES})
 
@@ -748,18 +755,34 @@ set(VAMPIRE_SOURCES
 #message(STATUS "a test message")
 
 add_executable(vampire ${VAMPIRE_SOURCES})
-#target_link_libraries(vampire Z3)
-#target_compile_definitions(vampire PRIVATE VZ3=1 CHECK_LEAKS=0)
-target_compile_definitions(vampire PRIVATE VZ3=0 CHECK_LEAKS=0)
+target_compile_definitions(vampire PRIVATE  CHECK_LEAKS=0)
 
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D VDEBUG=1") 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -D VDEBUG=0") 
+################################################################
+# z3 stuff
+################################################################
+# TODO: one could also add automatic installation of z3 and minisat (cf. github-seahorn solution)
+find_package(Z3 CONFIG NO_DEFAULT_PATH)
+if (NOT Z3_FOUND)
+  message(WARNING "No Z3 found -- Compiling without SMT support.")
+  target_compile_definitions(vampire PRIVATE VZ3=0)
+else ()
+  message(STATUS "Found Z3 ${Z3_VERSION_STRING}")
+  message(STATUS "Z3_DIR: ${Z3_DIR}")
+  target_include_directories(vampire PRIVATE ${Z3_CXX_INCLUDE_DIRS})
+  target_link_libraries(vampire PRIVATE ${Z3_LIBRARIES})
+  add_library(Z3 SHARED IMPORTED)
+  set_property(TARGET Z3 PROPERTY IMPORTED_LOCATION ${Z3_LIBRARY})
+  target_compile_definitions(vampire PRIVATE VZ3=1)
+endif()
+
+
+
 
 
 #################################################################
 # automated generation of Vampire revision information from git #
 #################################################################
-set(VAMPIRE_VERSION_NUMBER "4.4.0")
+set(VAMPIRE_VERSION_NUMBER "4.3.0")
 
 execute_process(
     COMMAND git log -1 --format=%h\ on\ %ci
