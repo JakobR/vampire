@@ -44,6 +44,11 @@
 #include "Options.hpp"
 #include "Statistics.hpp"
 
+#if VZ3
+#include "z3++.h"
+#include "z3_api.h"
+#endif
+
 
 using namespace Lib;
 using namespace Saturation;
@@ -199,6 +204,16 @@ void Statistics::print(ostream& out)
   out << "------------------------------\n";
   addCommentSignForSZS(out);
   out << "Version: " << VERSION_STRING << endl;
+
+#if VZ3
+  unsigned major = 0;
+  unsigned minor = 0;
+  unsigned build_number = 0;
+  unsigned revision_number = 0;
+  Z3_get_version(&major, &minor, &build_number, &revision_number);
+  addCommentSignForSZS(out);
+  out << "Z3 Version: " << major << "." << minor << "." << build_number << "." << revision_number << std::endl;
+#endif
 
   addCommentSignForSZS(out);
   out << "Termination reason: ";
