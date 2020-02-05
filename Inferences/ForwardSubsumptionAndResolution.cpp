@@ -46,6 +46,8 @@
 #include "Lib/Environment.hpp"
 #include "Shell/Statistics.hpp"
 
+#include "Debug/RuntimeStatistics.hpp"
+
 #include "ForwardSubsumptionAndResolution.hpp"
 
 extern bool reporting;
@@ -249,9 +251,54 @@ bool checkForSubsumptionResolution(Clause* cl, ClauseMatches* cms, Literal* resL
   return MLMatcher::canBeMatched(mcl,cl,cms->_matches,resLit);
 }
 
+struct FSCandidate
+{
+  CLASS_NAME(FSCandidate);
+  USE_ALLOCATOR(FSCandidate);
+
+  /// -1 means "never checked, got to success first"
+  /// 0 means "successful candidate"
+  /// >0 means discarded by one of the checks
+  int discardedAt = -1;
+
+  // TODO: MLMatch stats
+};
+
+struct FSStats
+{
+  CLASS_NAME(FSStats);
+  USE_ALLOCATOR(FSStats);
+
+  Clause* given = nullptr;
+  v_unordered_map<Clause*, FSCandidate> candidates;
+};
+
+std::ostream& operator<<(std::ostream& os, FSStats const& stats)
+{
+  os
+    << "Forward Subsumption Stats: "
+    << "{ \"id\": " << stats.given->number() << '\n'
+    << ", \"given\": \"" << stats.given->toNiceString() << "\"\n"
+    << ", \"candidates\": \n";
+  bool fst = true;
+  for (auto& c : stats.candidates) {
+    os << (fst ? '[' : ',');
+    fst = false;
+
+    os
+      << " { \"id\": " << c.first->number()
+      << ", \"discardedAt\": " << c.second.discardedAt
+      << ", \"candidate\": \"" << c.first->toNiceString() << '\"'
+      << "}\n";
+  }
+  os << "] }";
+  return os;
+}
+
 bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
 {
   CALL("ForwardSubsumptionAndResolution::perform");
+  std::unique_ptr<FSStats> stats;
 
   Clause* resolutionClause=0;
 
@@ -289,16 +336,35 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
   {
   LiteralMiniIndex miniIndex(cl);
 
+  stats = make_unique<FSStats>();
+  stats->given = cl;
+  for(unsigned li=0;li<clen;li++) {
+    SLQueryResultIterator rit=_fwIndex->getGeneralizations( (*cl)[li], false, false);
+    while(rit.hasNext()) {
+      SLQueryResult res=rit.next();
+
+      stats->candidates[res.clause] = {};
+    }
+  }
+  RSTAT_MCTR_INC("FS by non-unit candidates", stats->candidates.size());
+
   for(unsigned li=0;li<clen;li++) {
     SLQueryResultIterator rit=_fwIndex->getGeneralizations( (*cl)[li], false, false);
     while(rit.hasNext()) {
       SLQueryResult res=rit.next();
       Clause* mcl=res.clause;
+
+
       if(mcl->hasAux()) {
 	//we've already checked this clause
 	continue;
       }
+
+      // We start stats after the aux-check so we represent each candidate only once (the code tree would also only consider each candidate once)
+      FSCandidate& cstats = stats->candidates[mcl];
+
       if (_fwIndex->isSecondBest(res.clause, res.literal)) {
+        cstats.discardedAt = 1;
         continue;
       }
       unsigned mlen=mcl->length();
@@ -312,6 +378,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       cms->fillInMatches(&miniIndex);
 
       if(cms->anyNonMatched()) {
+        cstats.discardedAt = 2;
 	continue;
       }
 
@@ -319,6 +386,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
         premises = pvi( getSingletonIterator(mcl) );
         env.statistics->forwardSubsumed++;
         result = true;
+        cstats.discardedAt = 0;
         goto fin;
       }
     }
@@ -402,6 +470,11 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
   }
 
 fin:
+  if (stats) {
+    env.beginOutput();
+    env.out() << *stats << std::endl;
+    env.endOutput();
+  }
   Clause::releaseAux();
   while(cmStore.isNonEmpty()) {
     delete cmStore.pop();

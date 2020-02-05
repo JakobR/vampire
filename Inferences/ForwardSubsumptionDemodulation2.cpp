@@ -350,6 +350,21 @@ bool ForwardSubsumptionDemodulation2::perform(Clause* cl, Clause*& replacement, 
 
   unsigned int const cl_maxVar = cl->maxVar();
 
+  int numCandidates = 0;
+  for (unsigned sqli = 0; sqli < cl->length(); ++sqli) {
+    Literal* subsQueryLit = (*cl)[sqli];
+    SLQueryResultIterator rit = _index->getGeneralizations(subsQueryLit, false, false);
+    while (rit.hasNext()) {
+      SLQueryResult res = rit.next();
+      numCandidates += 1;
+    }
+  }
+  RSTAT_MCTR_INC("FSD candidates", numCandidates);
+  if (cl->number() > 20000) {
+    throw 27;
+  }
+  return false;
+
   for (unsigned sqli = 0; sqli < cl->length(); ++sqli) {
     Literal* subsQueryLit = (*cl)[sqli];  // this literal is only used to query the subsumption index
 

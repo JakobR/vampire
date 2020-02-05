@@ -48,6 +48,8 @@
 #include "Shell/Statistics.hpp"
 #include "Shell/TPTPPrinter.hpp"
 
+#include "Debug/RuntimeStatistics.hpp"
+
 #include "BackwardSubsumptionDemodulation.hpp"
 #include "SubsumptionDemodulationHelper.hpp"
 
@@ -199,6 +201,8 @@ STLIterator<Iterator> getSTLIterator(Iterator begin, Iterator end)
 }
 
 
+static int numCandidates = 0;
+
 void BackwardSubsumptionDemodulation::perform(Clause* cl, BwSimplificationRecordIterator& simplifications)
 {
   // TODO rename cl -> sideCl because it is the side premise
@@ -245,6 +249,7 @@ void BackwardSubsumptionDemodulation::perform(Clause* cl, BwSimplificationRecord
   static v_vector<BwSimplificationRecord> simplificationsStorage;
   ASS_EQ(simplificationsStorage.size(), 0);
 
+  numCandidates = 0;
   if (!lmLit1->isEquality() || !lmLit1->isPositive()) {
     // lmLit1 is not a positive equality, so we don't need to check the other one
     perform2(cl, lmLit1, simplificationsStorage);
@@ -255,6 +260,8 @@ void BackwardSubsumptionDemodulation::perform(Clause* cl, BwSimplificationRecord
     perform2(cl, lmLit1, simplificationsStorage);
     perform2(cl, lmLit2, simplificationsStorage);
   }
+
+  RSTAT_MCTR_INC("BSD candidates", numCandidates);
 
   simplifications = getPersistentIterator(getSTLIterator(simplificationsStorage.begin(), simplificationsStorage.end()));
   simplificationsStorage.clear();
@@ -297,6 +304,8 @@ void BackwardSubsumptionDemodulation::perform2(Clause* sideCl, Literal* candidat
   while (rit.hasNext()) {
     SLQueryResult qr = rit.next();
     Clause* candidate = qr.clause;
+    numCandidates += 1;
+    continue;
 
     // not enough literals to fit match and rewritten literal (performance)
     if (sideCl->length() > candidate->length()) {
