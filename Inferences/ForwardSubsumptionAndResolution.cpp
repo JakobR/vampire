@@ -279,11 +279,14 @@ std::ostream& operator<<(std::ostream& os, FSStats const& stats)
     << "Forward Subsumption Stats: "
     << "{ \"id\": " << stats.given->number() << '\n'
     << ", \"given\": \"" << stats.given->toNiceString() << "\"\n"
-    << ", \"candidates\": \n";
+    << ", \"candidates\": \n[";
   bool fst = true;
   for (auto& c : stats.candidates) {
-    os << (fst ? '[' : ',');
-    fst = false;
+    if (fst) {
+      fst = false;
+    } else {
+      os << ',';
+    }
 
     os
       << " { \"id\": " << c.first->number()
