@@ -33,6 +33,21 @@ namespace Kernel {
 using namespace Lib;
 
 
+struct MLMatchStats
+{
+  int numBacktracked = 0;
+  int numSteps = 0;
+};
+
+inline std::ostream& operator<<(std::ostream& os, MLMatchStats const& stats)
+{
+  os << "{ \"backtracked\": " << stats.numBacktracked
+     << ", \"steps\": " << stats.numSteps
+     << " }";
+  return os;
+}
+
+
 class MLMatcher
 {
   private:
@@ -109,6 +124,8 @@ class MLMatcher
      */
     void getBindings(v_unordered_map<unsigned, TermList>& outBindings) const;
 
+    MLMatchStats getStats() const;
+
     // Disallow copy because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
     MLMatcher(MLMatcher const&) = delete;
     MLMatcher& operator=(MLMatcher const&) = delete;
@@ -130,6 +147,8 @@ class MLMatcher
     {
       return canBeMatched(base->literals(), base->length(), instance, alts, resolvedLit, resolvedLit == nullptr);
     }
+
+    static MLMatchStats getStaticStats();
 };
 
 

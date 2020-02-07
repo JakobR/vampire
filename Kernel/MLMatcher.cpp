@@ -393,6 +393,8 @@ class MLMatcher::Impl final
 
     void getBindings(v_unordered_map<unsigned, TermList>& outBindings) const;
 
+    MLMatchStats getStats() const { return stats; }
+
     // Disallow copy and move because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
     Impl(Impl const&) = delete;
     Impl(Impl&&) = delete;
@@ -424,6 +426,8 @@ class MLMatcher::Impl final
     unsigned s_currBLit;
     int s_counter;
     bool s_multiset;
+
+    MLMatchStats stats;
 };
 
 
@@ -587,6 +591,8 @@ void MLMatcher::Impl::init(Literal** baseLits, unsigned baseLen, Clause* instanc
   s_currBLit = 0;
   s_counter = 0;
   s_multiset = multiset;
+
+  stats = MLMatchStats{};
 }
 
 
@@ -594,11 +600,14 @@ bool MLMatcher::Impl::nextMatch()
 {
   CALL("MLMatcher::Impl::nextMatch");
   MatchingData* const md = &s_matchingData;
+  if (s_counter > 0) { stats.numBacktracked++; }  // count the backtracking which skipped a successful match
 
   while (true) {
+    stats.numSteps++;
     MatchingData::InitResult ires = md->ensureInit(s_currBLit);
     if (ires != MatchingData::OK) {
       if (ires == MatchingData::MUST_BACKTRACK) {
+        stats.numBacktracked++;
         s_currBLit--;
         continue;
       } else {
@@ -640,6 +649,7 @@ bool MLMatcher::Impl::nextMatch()
       // No alt left for currBLit, backtrack
       ASS_GE(md->nextAlts[s_currBLit], maxAlt);
       if(s_currBLit==0) { return false; }
+      stats.numBacktracked++;
       s_currBLit--;
     }
 
@@ -655,6 +665,7 @@ bool MLMatcher::Impl::nextMatch()
 
   if(md->resolvedLit && s_matchRecord[1] >= md->len) {
     s_currBLit--;
+    stats.numBacktracked++;
     return nextMatch();
   }
 
@@ -743,13 +754,25 @@ void MLMatcher::getBindings(v_unordered_map<unsigned, TermList>& outBindings) co
   m_impl->getBindings(outBindings);
 }
 
+MLMatchStats MLMatcher::getStats() const
+{
+  ASS(m_impl);
+  return m_impl->getStats();
+}
+
+
+static MLMatcher matcher;
+
 bool MLMatcher::canBeMatched(Literal** baseLits, unsigned baseLen, Clause* instance, LiteralList const* const* alts, Literal* resolvedLit, bool multiset)
 {
-  static MLMatcher::Impl matcher;
   matcher.init(baseLits, baseLen, instance, alts, resolvedLit, multiset);
   return matcher.nextMatch();
 }
 
+MLMatchStats MLMatcher::getStaticStats()
+{
+  return matcher.getStats();
+}
 
 
 }  // namespace Kernel

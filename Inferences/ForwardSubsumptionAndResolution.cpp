@@ -257,6 +257,19 @@ bool checkForSubsumptionResolution(Clause* cl, ClauseMatches* cms, Literal* resL
   return MLMatcher::canBeMatched(mcl,cl,cms->_matches,resLit);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 #if FS_STATS
 struct FSCandidate
 {
@@ -268,7 +281,8 @@ struct FSCandidate
   /// >0 means discarded by one of the checks
   int discardedAt = -1;
 
-  // TODO: MLMatch stats
+  bool hasML = false;
+  MLMatchStats mlms;
 };
 
 struct FSStats
@@ -295,16 +309,35 @@ std::ostream& operator<<(std::ostream& os, FSStats const& stats)
       os << ',';
     }
 
-    os
-      << " { \"id\": " << c.first->number()
-      << ", \"discardedAt\": " << c.second.discardedAt
-      << ", \"candidate\": \"" << c.first->toNiceString() << '\"'
-      << "}\n";
+    os << " { \"id\": " << c.first->number();
+    os << ", \"discardedAt\": " << c.second.discardedAt;
+    if (c.second.hasML) {
+      os << ", \"mlms\": " << c.second.mlms;
+    }
+    os << ", \"candidate\": \"" << c.first->toNiceString() << '\"';
+    os << " }\n";
   }
   os << "] }";
   return os;
 }
 #endif
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
 {
@@ -383,7 +416,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       FSCandidate& cstats = stats->candidates[mcl];
 
       if (mcl->length() > cl->length()) {  // why was this check missing? well, since FSR does subset (not submultiset), we will need the clausematches for FSR later anyways. but the time should be counted to FSR imo.
-        cstats.discardedAt = 5;
+        cstats.discardedAt = 1;
         continue;
       }
 #endif
@@ -391,7 +424,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       if (_fwIndex->isSecondBest(res.clause, res.literal)) {
         ASSERTION_VIOLATION;
 #if FS_STATS
-        cstats.discardedAt = 1;
+        cstats.discardedAt = 2;
 #endif
         continue;
       }
@@ -407,12 +440,17 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
 
       if(cms->anyNonMatched()) {
 #if FS_STATS
-        cstats.discardedAt = 2;
+        cstats.discardedAt = 3;
 #endif
 	continue;
       }
 
-      if(MLMatcher::canBeMatched(mcl,cl,cms->_matches,0) && ColorHelper::compatible(cl->color(), mcl->color())) {
+      bool mlres = MLMatcher::canBeMatched(mcl,cl,cms->_matches,0);
+      cstats.hasML = true;
+      cstats.mlms = MLMatcher::getStaticStats();
+
+      if(mlres && ColorHelper::compatible(cl->color(), mcl->color())) {
+        RSTAT_CTR_INC("FS MLMatch Success");
         premises = pvi( getSingletonIterator(mcl) );
         env.statistics->forwardSubsumed++;
         result = true;
@@ -421,8 +459,9 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
 #endif
         goto fin;
       } else {
+        RSTAT_CTR_INC("FS MLMatch Failure");
 #if FS_STATS
-        cstats.discardedAt = 3;
+        cstats.discardedAt = 4;
 #endif
         continue;
       }
