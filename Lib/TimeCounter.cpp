@@ -429,6 +429,9 @@ void TimeCounter::outputSingleStat(TimeCounterUnit tcu, ostream& out)
     Timer::printMSString(out, s_measuredTimes[tcu]-s_measuredTimesChildren[tcu]);
     out << " ) ";
   }
+
+  int own = s_measuredTimes[tcu] - s_measuredTimesChildren[tcu];
+  out << "\t " << ( ((double)(100*own)) / s_measuredTimes[TC_OTHER] ) << " % of total solver runtime";
   
   out<<endl;
 }
