@@ -28,6 +28,23 @@ namespace Kernel {
 using namespace Lib;
 
 
+struct MLMatch2Stats
+{
+  int numBacktracked = 0;
+  int numSteps = 0;
+  int numMatches = 0;
+};
+
+inline std::ostream& operator<<(std::ostream& os, MLMatch2Stats const& stats)
+{
+  os << "{ \"backtracked\": " << stats.numBacktracked
+     << ", \"steps\": " << stats.numSteps
+     << ", \"matches\": " << stats.numMatches
+     << " }";
+  return os;
+}
+
+
 class MLMatcher2 final
 {
   public:
@@ -95,6 +112,8 @@ class MLMatcher2 final
      * May only be called in a matched state (i.e., after nextMatch() has returned true).
      */
     void getBindings(v_unordered_map<unsigned, TermList>& outBindings) const;
+
+    MLMatch2Stats getStats() const;
 
     // Disallow copy because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
     MLMatcher2(MLMatcher2 const&) = delete;

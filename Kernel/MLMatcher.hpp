@@ -37,12 +37,14 @@ struct MLMatchStats
 {
   int numBacktracked = 0;
   int numSteps = 0;
+  int numSuccesses = 0;
 };
 
 inline std::ostream& operator<<(std::ostream& os, MLMatchStats const& stats)
 {
   os << "{ \"backtracked\": " << stats.numBacktracked
      << ", \"steps\": " << stats.numSteps
+     << ", \"successes\": " << stats.numSuccesses
      << " }";
   return os;
 }

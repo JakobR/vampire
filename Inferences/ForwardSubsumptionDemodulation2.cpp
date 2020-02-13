@@ -26,6 +26,12 @@
 #include <unordered_set>
 #include <vector>
 
+
+#define FSD_STATS VDEBUG
+
+
+
+
 using namespace Kernel;
 using namespace Lib;
 using namespace Inferences;
@@ -291,6 +297,17 @@ void ForwardSubsumptionDemodulation2::detach()
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
 bool ForwardSubsumptionDemodulation2::perform(Clause* cl, Clause*& replacement, ClauseIterator& premises)
 {
   CALL("ForwardSubsumptionDemodulation2::perform");
@@ -350,6 +367,7 @@ bool ForwardSubsumptionDemodulation2::perform(Clause* cl, Clause*& replacement, 
 
   unsigned int const cl_maxVar = cl->maxVar();
 
+#if FSD_STATS
   int numCandidates = 0;
   for (unsigned sqli = 0; sqli < cl->length(); ++sqli) {
     Literal* subsQueryLit = (*cl)[sqli];
@@ -357,13 +375,11 @@ bool ForwardSubsumptionDemodulation2::perform(Clause* cl, Clause*& replacement, 
     while (rit.hasNext()) {
       SLQueryResult res = rit.next();
       numCandidates += 1;
+      RSTAT_MCTR_INC("FSDv2, candidate length", res.clause->length());
     }
   }
-  RSTAT_MCTR_INC("FSD candidates", numCandidates);
-  if (cl->number() > 20000) {
-    throw 27;
-  }
-  return false;
+  RSTAT_MCTR_INC("FSDv2, number of candidates", numCandidates);
+#endif
 
   for (unsigned sqli = 0; sqli < cl->length(); ++sqli) {
     Literal* subsQueryLit = (*cl)[sqli];  // this literal is only used to query the subsumption index
@@ -887,6 +903,9 @@ isRedundant:
 #endif
 
               RSTAT_MCTR_INC("FSDv2, successes by MLMatch", numMatches + 1);  // +1 so it fits with the previous output
+              MLMatch2Stats stats = matcher.getStats();
+              RSTAT_MCTR_INC("FSDv2, Success MLMatch #backtracked", stats.numBacktracked);
+              RSTAT_MCTR_INC("FSDv2, Success MLMatch #steps", stats.numSteps);
 
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
               if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {  // see note above
@@ -901,6 +920,10 @@ isRedundant:
           }  // while (nvi.hasNext())
         }  // for (dli)
       }  // for (numMatches)
+      MLMatch2Stats failstats = matcher.getStats();
+      RSTAT_MCTR_INC("FSDv2, Failure MLMatch #backtracked", failstats.numBacktracked);
+      RSTAT_MCTR_INC("FSDv2, Failure MLMatch #steps", failstats.numSteps);
+      RSTAT_MCTR_INC("FSDv2, Failure MLMatch #mlmatch", failstats.numMatches);
 
       if (numMatches > 0) {
         RSTAT_CTR_INC("FSDv2, MLMatch but no FSD inference");

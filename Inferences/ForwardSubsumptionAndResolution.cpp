@@ -299,7 +299,7 @@ std::ostream& operator<<(std::ostream& os, FSStats const& stats)
   os
     << "Forward Subsumption Stats: "
     << "{ \"id\": " << stats.given->number() << '\n'
-    << ", \"given\": \"" << stats.given->toNiceString() << "\"\n"
+    // << ", \"given\": \"" << stats.given->toNiceString() << "\"\n"
     << ", \"candidates\": \n[";
   bool fst = true;
   for (auto& c : stats.candidates) {
@@ -314,7 +314,7 @@ std::ostream& operator<<(std::ostream& os, FSStats const& stats)
     if (c.second.hasML) {
       os << ", \"mlms\": " << c.second.mlms;
     }
-    os << ", \"candidate\": \"" << c.first->toNiceString() << '\"';
+    // os << ", \"candidate\": \"" << c.first->toNiceString() << '\"';
     os << " }\n";
   }
   os << "] }";
@@ -391,9 +391,10 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       SLQueryResult res=rit.next();
 
       stats->candidates[res.clause] = {};
+      RSTAT_MCTR_INC("FS non-unit candidate length", res.clause->length());
     }
   }
-  RSTAT_MCTR_INC("FS by non-unit candidates", stats->candidates.size());
+  RSTAT_MCTR_INC("FS number of non-unit candidates", stats->candidates.size());
 #endif
 
   for(unsigned li=0;li<clen;li++) {
@@ -461,7 +462,10 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       } else {
         RSTAT_CTR_INC("FS MLMatch Failure");
 #if FS_STATS
+        RSTAT_MCTR_INC("FS MLMatch Failure #backtracked", cstats.mlms.numBacktracked);
+        RSTAT_MCTR_INC("FS MLMatch Failure #steps", cstats.mlms.numSteps);
         cstats.discardedAt = 4;
+        ASS_EQ(cstats.mlms.numSteps, cstats.mlms.numBacktracked * 2 + 1);
 #endif
         continue;
       }

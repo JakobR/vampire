@@ -38,7 +38,7 @@
 #endif
 
 #define MLMATCHER2_DEBUG_OUTPUT false
-#define MLMATCHER2_ADDITIONAL_ASSERTIONS true
+#define MLMATCHER2_ADDITIONAL_ASSERTIONS false
 
 
 namespace {
@@ -323,6 +323,8 @@ struct MatchingData final {
   TermList** altBindingPtrStorage;
   TermList* altBindingStorage;
   pair<int,int>* intersectionStorage;
+
+  MLMatch2Stats stats;
 
   enum InitResult {
     OK,
@@ -697,6 +699,7 @@ struct MatchingData final {
    */
   bool backtrack()
   {
+    stats.numBacktracked++;
 #if MLMATCHER2_DEBUG_OUTPUT
     if (currBLit == 0) {
       std::cerr << "Conflict at level 0." << std::endl;
@@ -750,6 +753,8 @@ class MLMatcher2::Impl final
     void getMatchedAltsBitmap(v_vector<bool>& outMatchedBitmap) const;
 
     void getBindings(v_unordered_map<unsigned, TermList>& outBindings) const;
+
+    MLMatch2Stats getStats() const { return s_matchingData.stats; }
 
     // Disallow copy and move because the internal implementation still uses pointers to the underlying storage and it seems hard to untangle that.
     Impl(Impl const&) = delete;
@@ -910,6 +915,8 @@ void MLMatcher2::Impl::initMatchingData(Literal** baseLits0, unsigned baseLen, C
   s_matchingData.matchRecord.init(instance->length(), 0xFFFFFFFF);
   s_matchingData.nextAlts[0] = 0;
   s_matchingData.currBLit = 0;
+
+  s_matchingData.stats = MLMatch2Stats{};
 }
 
 
@@ -965,6 +972,7 @@ bool MLMatcher2::Impl::nextMatch()
 #if MLMATCHER2_DEBUG_OUTPUT
     std::cerr << "Begin: currBLit = " << md->currBLit << ", which is: " << md->bases[md->currBLit]->toString() << std::endl;
 #endif
+    md->stats.numSteps++;
 
     // Ensure data structures for current base literal.
     // This includes:
@@ -1135,6 +1143,7 @@ bool MLMatcher2::Impl::nextMatch()
   ASS_EQ(md->currBLit, md->len);
   // Backtrack in preparation of next call to this function
   ALWAYS(md->backtrack());
+  md->stats.numMatches++;
   return true;
 }  // nextMatch
 
@@ -1234,5 +1243,10 @@ void MLMatcher2::getBindings(v_unordered_map<unsigned, TermList>& outBindings) c
   m_impl->getBindings(outBindings);
 }
 
+MLMatch2Stats MLMatcher2::getStats() const
+{
+  ASS(m_impl);
+  return m_impl->getStats();
+}
 
 }  // namespace Kernel
