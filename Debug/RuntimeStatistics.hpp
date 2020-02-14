@@ -24,6 +24,10 @@
 #ifndef __RuntimeStatistics__
 #define __RuntimeStatistics__
 
+
+#define RUNTIME_STATS 1
+
+
 /**
 If RUNTIME_STATS is defined as 0, runtime statistics are not being
 collected nor output.
