@@ -174,6 +174,7 @@ public:
 
 typedef Stack<ClauseMatches*> CMStack;
 
+/*
 bool isSubsumed(Clause* cl, CMStack& cmStore)
 {
   CALL("isSubsumed");
@@ -194,6 +195,7 @@ bool isSubsumed(Clause* cl, CMStack& cmStore)
   }
   return false;
 }
+*/
 
 Clause* ForwardSubsumptionAndResolution::generateSubsumptionResolutionClause(Clause* cl, Literal* lit, Clause* baseClause)
 {
@@ -254,7 +256,19 @@ bool checkForSubsumptionResolution(Clause* cl, ClauseMatches* cms, Literal* resL
     }
   }
 
-  return MLMatcher::canBeMatched(mcl,cl,cms->_matches,resLit);
+  if (MLMatcher::canBeMatched(mcl,cl,cms->_matches,resLit)) {
+    auto mlms = MLMatcher::getStaticStats();
+    RSTAT_CTR_INC( "FSR MLMatch Success");
+    RSTAT_MCTR_INC("FSR MLMatch Success #backtracked", mlms.numBacktracked);
+    RSTAT_MCTR_INC("FSR MLMatch Success #steps", mlms.numSteps);
+    return true;
+  } else {
+    auto mlms = MLMatcher::getStaticStats();
+    RSTAT_CTR_INC( "FSR MLMatch Failure");
+    RSTAT_MCTR_INC("FSR MLMatch Failure #backtracked", mlms.numBacktracked);
+    RSTAT_MCTR_INC("FSR MLMatch Failure #steps", mlms.numSteps);
+    return false;
+  }
 }
 
 
@@ -391,10 +405,10 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       SLQueryResult res=rit.next();
 
       stats->candidates[res.clause] = {};
-      RSTAT_MCTR_INC("FS non-unit candidate length", res.clause->length());
+      RSTAT_MCTR_INC("FS candidate length", res.clause->length());
     }
   }
-  RSTAT_MCTR_INC("FS number of non-unit candidates", stats->candidates.size());
+  RSTAT_MCTR_INC("FS #candidates", stats->candidates.size());
 #endif
 
   for(unsigned li=0;li<clen;li++) {
@@ -451,7 +465,9 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
       cstats.mlms = MLMatcher::getStaticStats();
 
       if(mlres && ColorHelper::compatible(cl->color(), mcl->color())) {
-        RSTAT_CTR_INC("FS MLMatch Success");
+        RSTAT_CTR_INC( "FS MLMatch Success");
+        RSTAT_MCTR_INC("FS MLMatch Success #backtracked", cstats.mlms.numBacktracked);
+        RSTAT_MCTR_INC("FS MLMatch Success #steps", cstats.mlms.numSteps);
         premises = pvi( getSingletonIterator(mcl) );
         env.statistics->forwardSubsumed++;
         result = true;
@@ -460,7 +476,7 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
 #endif
         goto fin;
       } else {
-        RSTAT_CTR_INC("FS MLMatch Failure");
+        RSTAT_CTR_INC( "FS MLMatch Failure");
 #if FS_STATS
         RSTAT_MCTR_INC("FS MLMatch Failure #backtracked", cstats.mlms.numBacktracked);
         RSTAT_MCTR_INC("FS MLMatch Failure #steps", cstats.mlms.numSteps);
@@ -551,13 +567,13 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
   }
 
 fin:
-#if FS_STATS
-  if (stats) {
-    env.beginOutput();
-    env.out() << *stats << std::endl;
-    env.endOutput();
-  }
-#endif
+// #if FS_STATS
+//   if (stats) {
+//     env.beginOutput();
+//     env.out() << *stats << std::endl;
+//     env.endOutput();
+//   }
+// #endif
   Clause::releaseAux();
   while(cmStore.isNonEmpty()) {
     delete cmStore.pop();
