@@ -27,7 +27,7 @@
 #include <vector>
 
 
-#define FSD_STATS VDEBUG
+#define FSD_STATS 1
 
 
 

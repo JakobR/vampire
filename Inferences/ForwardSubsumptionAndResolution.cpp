@@ -51,7 +51,7 @@
 #include "ForwardSubsumptionAndResolution.hpp"
 
 
-#define FS_STATS VDEBUG
+#define FS_STATS 1
 
 
 
