@@ -141,10 +141,10 @@ bool ForwardSubsumptionDemodulation2::perform(Clause* cl, Clause*& replacement, 
     while (rit.hasNext()) {
       SLQueryResult res = rit.next();
       numCandidates += 1;
-      RSTAT_MCTR_INC("FSDv2, candidate length", res.clause->length());
+      RSTAT_MCTR_INC("FSD candidate length", res.clause->length());
     }
   }
-  RSTAT_MCTR_INC("FSDv2, number of candidates", numCandidates);
+  RSTAT_MCTR_INC("FSD #candidates", numCandidates);
 #endif
 
   for (unsigned sqli = 0; sqli < cl->length(); ++sqli) {
@@ -670,8 +670,9 @@ isRedundant:
 
               RSTAT_MCTR_INC("FSDv2, successes by MLMatch", numMatches + 1);  // +1 so it fits with the previous output
               MLMatch2Stats stats = matcher.getStats();
-              RSTAT_MCTR_INC("FSDv2, Success MLMatch #backtracked", stats.numBacktracked);
-              RSTAT_MCTR_INC("FSDv2, Success MLMatch #steps", stats.numSteps);
+              RSTAT_MCTR_INC("FSD Success MLMatch #backtracked", stats.numBacktracked);
+              RSTAT_MCTR_INC("FSD Success MLMatch #steps", stats.numSteps);
+              RSTAT_MCTR_INC("FSD Success MLMatch #mlmatch", stats.numMatches);
 
 #if VDEBUG && FSD_VDEBUG_REDUNDANCY_ASSERTIONS
               if (getOptions().literalComparisonMode() != Options::LiteralComparisonMode::REVERSE) {  // see note above
@@ -687,9 +688,9 @@ isRedundant:
         }  // for (dli)
       }  // for (numMatches)
       MLMatch2Stats failstats = matcher.getStats();
-      RSTAT_MCTR_INC("FSDv2, Failure MLMatch #backtracked", failstats.numBacktracked);
-      RSTAT_MCTR_INC("FSDv2, Failure MLMatch #steps", failstats.numSteps);
-      RSTAT_MCTR_INC("FSDv2, Failure MLMatch #mlmatch", failstats.numMatches);
+      RSTAT_MCTR_INC("FSD Failure MLMatch #backtracked", failstats.numBacktracked);
+      RSTAT_MCTR_INC("FSD Failure MLMatch #steps", failstats.numSteps);
+      RSTAT_MCTR_INC("FSD Failure MLMatch #mlmatch", failstats.numMatches);
 
       if (numMatches > 0) {
         RSTAT_CTR_INC("FSDv2, MLMatch but no FSD inference");

@@ -261,7 +261,7 @@ void BackwardSubsumptionDemodulation::perform(Clause* cl, BwSimplificationRecord
     perform2(cl, lmLit2, simplificationsStorage);
   }
 
-  RSTAT_MCTR_INC("BSD candidates", numCandidates);
+  RSTAT_MCTR_INC("BSD #candidates", numCandidates);
 
   simplifications = getPersistentIterator(getSTLIterator(simplificationsStorage.begin(), simplificationsStorage.end()));
   simplificationsStorage.clear();
@@ -304,13 +304,6 @@ void BackwardSubsumptionDemodulation::perform2(Clause* sideCl, Literal* candidat
   while (rit.hasNext()) {
     SLQueryResult qr = rit.next();
     Clause* candidate = qr.clause;
-    numCandidates += 1;
-    continue;
-
-    // not enough literals to fit match and rewritten literal (performance)
-    if (sideCl->length() > candidate->length()) {
-      continue;
-    }
 
     // this is impossible
     // (if it triggers, then skip the candidate. SD with twice the same clause is impossible. even if it were, FSD should have dealt with it.)
@@ -320,6 +313,14 @@ void BackwardSubsumptionDemodulation::perform2(Clause* sideCl, Literal* candidat
       continue;  // we've already checked this premise
     }
     candidate->setAux(nullptr);
+
+    numCandidates += 1;  // only count unique candidates (so after the hasAux() check)
+    RSTAT_MCTR_INC("BSD candidate length", qr.clause->length());
+
+    // not enough literals to fit match and rewritten literal (performance)
+    if (sideCl->length() > candidate->length()) {
+      continue;
+    }
 
     if (!ColorHelper::compatible(sideCl->color(), candidate->color())) {
       continue;
@@ -522,10 +523,19 @@ bool BackwardSubsumptionDemodulation::simplifyCandidate(Clause* sideCl, Clause* 
       Clause* replacement = nullptr;
       if (simplifyCandidate2(sideCl, mainCl, matcher, replacement)) {
         RSTAT_MCTR_INC("BSD, successes by MLMatch", numMatches + 1);  // +1 so it fits with the previous output
+        MLMatch2Stats stats = matcher.getStats();
+        RSTAT_MCTR_INC("BSD Success MLMatch #backtracked", stats.numBacktracked);
+        RSTAT_MCTR_INC("BSD Success MLMatch #steps", stats.numSteps);
+        RSTAT_MCTR_INC("BSD Success MLMatch #mlmatch", stats.numMatches);
         simplifications.emplace_back(mainCl, replacement);
         return true;
       }
     }  // for (numMatches)
+
+    MLMatch2Stats failstats = matcher.getStats();
+    RSTAT_MCTR_INC("BSD Failure MLMatch #backtracked", failstats.numBacktracked);
+    RSTAT_MCTR_INC("BSD Failure MLMatch #steps", failstats.numSteps);
+    RSTAT_MCTR_INC("BSD Failure MLMatch #mlmatch", failstats.numMatches);
 
     if (numMatches > 0) {
       RSTAT_CTR_INC("BSD, MLMatch but no subsumption demodulation");
