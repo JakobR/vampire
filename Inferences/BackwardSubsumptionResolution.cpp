@@ -180,6 +180,7 @@ void BackwardSubsumptionResolution::perform(Clause* cl,
     }
 
     numCandidates += 1;  // only count *unique* candidates
+    RSTAT_MCTR_INC("BSR candidate length", qr.clause->length());
 
     unsigned ilen=icl->length();
     if(ilen<clen || icl==cl) {
@@ -315,6 +316,7 @@ void BackwardSubsumptionResolution::perform(Clause* cl,
     }
 
     numCandidates += 1;  // only count *unique* candidates
+    RSTAT_MCTR_INC("BSR candidate length", qr.clause->length());
 
     unsigned ilen=icl->length();
     if(ilen<clen || icl==cl) {

@@ -181,6 +181,7 @@ void SLQueryBackwardSubsumption::perform(Clause* cl,
     }
 
     numCandidates += 1;  // only count *unique* candidates
+    RSTAT_MCTR_INC("BS candidate length", qr.clause->length());
 
     unsigned ilen=icl->length();
     if(ilen<clen || icl==cl) {
