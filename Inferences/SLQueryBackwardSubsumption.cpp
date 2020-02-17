@@ -48,8 +48,8 @@
 
 #include "SLQueryBackwardSubsumption.hpp"
 
-#undef RSTAT_COLLECTION
-#define RSTAT_COLLECTION 0
+// #undef RSTAT_COLLECTION
+// #define RSTAT_COLLECTION 0
 
 namespace Inferences
 {
@@ -168,8 +168,11 @@ void SLQueryBackwardSubsumption::perform(Clause* cl,
   static DHSet<Clause*> checkedClauses;
   checkedClauses.reset();
 
+  int numCandidates = 0;
+
   SLQueryResultIterator rit=_index->getInstances( (*cl)[lmIndex], false, false);
   while(rit.hasNext()) {
+    numCandidates += 1;
     SLQueryResult qr=rit.next();
     Clause* icl=qr.clause;
     Literal* ilit=qr.literal;
@@ -271,10 +274,19 @@ void SLQueryBackwardSubsumption::perform(Clause* cl,
     }
 
     RSTAT_CTR_INC("bs1 3 final check");
-    if(MLMatcher::canBeMatched(cl,icl,matchedLits.array(),0)) {
+    if (MLMatcher::canBeMatched(cl,icl,matchedLits.array(),0)) {
+      auto mlms = MLMatcher::getStaticStats();
+      RSTAT_CTR_INC( "BS MLMatch Success");
+      RSTAT_MCTR_INC("BS MLMatch Success #backtracked", mlms.numBacktracked);
+      RSTAT_MCTR_INC("BS MLMatch Success #steps", mlms.numSteps);
       ClauseList::push(icl, subsumed);
       env.statistics->backwardSubsumed++;
       RSTAT_CTR_INC("bs1 4 performed");
+    } else {
+      auto mlms = MLMatcher::getStaticStats();
+      RSTAT_CTR_INC( "BS MLMatch Failure");
+      RSTAT_MCTR_INC("BS MLMatch Failure #backtracked", mlms.numBacktracked);
+      RSTAT_MCTR_INC("BS MLMatch Failure #steps", mlms.numSteps);
     }
 
   match_fail:
@@ -283,6 +295,8 @@ void SLQueryBackwardSubsumption::perform(Clause* cl,
       matchedLits[bi]=0;
     }
   }
+
+  RSTAT_MCTR_INC("BS #candidates", numCandidates);
 
 
   if(subsumed) {
