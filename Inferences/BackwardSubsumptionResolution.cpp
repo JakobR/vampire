@@ -49,8 +49,8 @@
 
 #include "BackwardSubsumptionResolution.hpp"
 
-#undef RSTAT_COLLECTION
-#define RSTAT_COLLECTION 0
+// #undef RSTAT_COLLECTION
+// #define RSTAT_COLLECTION 0
 
 namespace Inferences
 {
@@ -168,17 +168,21 @@ void BackwardSubsumptionResolution::perform(Clause* cl,
 
   List<BwSimplificationRecord>* simplRes=0;
 
+  int numCandidates = 0;
   SLQueryResultIterator rit=_index->getInstances( lmLit, true, false);
   while(rit.hasNext()) {
     SLQueryResult qr=rit.next();
     Clause* icl=qr.clause;
     Literal* ilit=qr.literal;
-    unsigned ilen=icl->length();
-    if(ilen<clen || icl==cl) {
+
+    if(!checkedClauses.insert(icl)) {
       continue;
     }
 
-    if(!checkedClauses.insert(icl)) {
+    numCandidates += 1;  // only count *unique* candidates
+
+    unsigned ilen=icl->length();
+    if(ilen<clen || icl==cl) {
       continue;
     }
 
@@ -270,10 +274,20 @@ void BackwardSubsumptionResolution::perform(Clause* cl,
 
     RSTAT_CTR_INC("bsr1 3 final check");
     if(MLMatcher::canBeMatched(cl,icl,matchedLits.array(),qr.literal)) {
+      auto mlms = MLMatcher::getStaticStats();
+      RSTAT_CTR_INC( "BSR MLMatch Success");
+      RSTAT_MCTR_INC("BSR MLMatch Success #backtracked", mlms.numBacktracked);
+      RSTAT_MCTR_INC("BSR MLMatch Success #steps", mlms.numSteps);
+
       RSTAT_CTR_INC("bsr1 4 performed");
       Clause* resCl=ForwardSubsumptionAndResolution::generateSubsumptionResolutionClause(qr.clause, qr.literal, cl);
       List<BwSimplificationRecord>::push(BwSimplificationRecord(qr.clause,resCl), simplRes);
       env.statistics->backwardSubsumptionResolution++;      
+    } else {
+      auto mlms = MLMatcher::getStaticStats();
+      RSTAT_CTR_INC( "BSR MLMatch Failure");
+      RSTAT_MCTR_INC("BSR MLMatch Failure #backtracked", mlms.numBacktracked);
+      RSTAT_MCTR_INC("BSR MLMatch Failure #steps", mlms.numSteps);
     }
 
   match_fail:
@@ -295,12 +309,15 @@ void BackwardSubsumptionResolution::perform(Clause* cl,
     SLQueryResult qr=rit.next();
     Clause* icl=qr.clause;
     Literal* ilit=qr.literal;
-    unsigned ilen=icl->length();
-    if(ilen<clen || icl==cl) {
+
+    if(!checkedClauses.insert(icl)) {
       continue;
     }
 
-    if(!checkedClauses.insert(icl)) {
+    numCandidates += 1;  // only count *unique* candidates
+
+    unsigned ilen=icl->length();
+    if(ilen<clen || icl==cl) {
       continue;
     }
 
@@ -416,10 +433,19 @@ void BackwardSubsumptionResolution::perform(Clause* cl,
 
     RSTAT_CTR_INC("bsr2 4 final check");
     if(MLMatcher::canBeMatched(cl,icl,matchedLits.array(),resolvedLit)) {
+      auto mlms = MLMatcher::getStaticStats();
+      RSTAT_CTR_INC( "BSR MLMatch Success");
+      RSTAT_MCTR_INC("BSR MLMatch Success #backtracked", mlms.numBacktracked);
+      RSTAT_MCTR_INC("BSR MLMatch Success #steps", mlms.numSteps);
       RSTAT_CTR_INC("bsr2 5 performed");
       Clause* resCl=ForwardSubsumptionAndResolution::generateSubsumptionResolutionClause(qr.clause, resolvedLit, cl);
       List<BwSimplificationRecord>::push(BwSimplificationRecord(qr.clause,resCl), simplRes);
       env.statistics->backwardSubsumptionResolution++;
+    } else {
+      auto mlms = MLMatcher::getStaticStats();
+      RSTAT_CTR_INC( "BSR MLMatch Failure");
+      RSTAT_MCTR_INC("BSR MLMatch Failure #backtracked", mlms.numBacktracked);
+      RSTAT_MCTR_INC("BSR MLMatch Failure #steps", mlms.numSteps);
     }
 
   match_fail2:
@@ -429,7 +455,7 @@ void BackwardSubsumptionResolution::perform(Clause* cl,
     }
   }
 
-
+  RSTAT_MCTR_INC("BSR #candidates", numCandidates);
 
 
 
