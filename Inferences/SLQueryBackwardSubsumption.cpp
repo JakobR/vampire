@@ -172,16 +172,18 @@ void SLQueryBackwardSubsumption::perform(Clause* cl,
 
   SLQueryResultIterator rit=_index->getInstances( (*cl)[lmIndex], false, false);
   while(rit.hasNext()) {
-    numCandidates += 1;
     SLQueryResult qr=rit.next();
     Clause* icl=qr.clause;
     Literal* ilit=qr.literal;
-    unsigned ilen=icl->length();
-    if(ilen<clen || icl==cl) {
+
+    if(!checkedClauses.insert(icl)) {
       continue;
     }
 
-    if(!checkedClauses.insert(icl)) {
+    numCandidates += 1;  // only count *unique* candidates
+
+    unsigned ilen=icl->length();
+    if(ilen<clen || icl==cl) {
       continue;
     }
 
