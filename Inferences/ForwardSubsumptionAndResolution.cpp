@@ -356,6 +356,36 @@ bool ForwardSubsumptionAndResolution::perform(Clause* cl, Clause*& replacement, 
 	SLQueryResult res=rit.next();
 	Clause* mcl=res.clause;
 
+  if (cl->number() == 1641) {
+    std::cerr << "cl:  " << cl->toString() << "\n";
+    std::cerr << "mcl: " << mcl->toString() << "\n";
+    for (unsigned i = 0; i < mcl->length(); ++i) {
+      Literal* l = (*mcl)[i];
+      std::cerr << "mcl[" << i << "]: " << l->toString() << "\n";
+      std::cerr << "      header: " << l->header() << "\n";
+      std::cerr << "      weight: " << l->weight() << "\n";
+      if (l->isEquality()) {
+        std::cerr << "      eqsort: " << SortHelper::getEqualityArgumentSort(l) << "\n";
+      }
+    }
+    for (unsigned i = 0; i < cl->length(); ++i) {
+      Literal* l = (*cl)[i];
+      std::cerr << "cl[" << i << "]: " << l->toString() << "\n";
+      std::cerr << "      header: " << l->header() << "\n";
+      std::cerr << "      weight: " << l->weight() << "\n";
+      if (l->isEquality()) {
+        std::cerr << "      eqsort: " << SortHelper::getEqualityArgumentSort(l) << "\n";
+      }
+    }
+    // for (unsigned i = 0; i < mcl->length(); ++i) {
+    //   Literal* bl = (*mcl)[i];
+    //   for (unsigned j = 0; j < cl->length(); ++j) {
+    //     Literal* il = (*cl)[j];
+    //     std::cerr << "match(" << bl->toString() << ", " << il->toString() << ") = " << MatchingUtils::match(bl, il, false) << "\n";
+    //   }
+    // }
+  }
+
 	if(mcl->hasAux()) {
 	  //we have already examined this clause
 	  continue;
